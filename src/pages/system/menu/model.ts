@@ -1,157 +1,190 @@
-import type { FormList } from "#/form";
-import type { TableColumnsProps } from "#/public";
-import type { DefaultOptionType } from 'ant-design-vue/lib/select';
-import { FORM_REQUIRED } from "@/utils/config";
-import { MENU_TYPE } from "@/utils/constants";
-
-export interface SystemMenuTree {
-  children?: SystemMenuTree[];
-  enable?: boolean;
-  id: string;
-  menuType: number;
-  menuIcon?: string;
-  link?: boolean;
-  menuName: string;
-  menuNameEn: string;
-  menuNo?: string;
-  menuRoute: string;
-  parentId?: string;
-  permissions: string;
-  sortNum?: number;
-  visible?: boolean;
-}
-
-// 权限前缀
-const permissionPrefix = '/authority/menu';
-
-// 权限
-export const pagePermission = {
-  page: `${permissionPrefix}/index`,
-  create: `${permissionPrefix}/create`,
-  update: `${permissionPrefix}/update`,
-  delete: `${permissionPrefix}/delete`,
-};
+import type { BaseFormList, BaseSearchList } from '#/form';
+import type { TableColumn } from '#/public';
+import type { Translate } from '@/utils/config';
+import { EMPTY_VALUE, FORM_REQUIRED } from '@/utils/config';
+import { MENU_ACTIONS, MENU_STATUS, MENU_TYPES } from '@/utils/constants';
+import { getMenuList } from '@/servers/system/menu';
+import { h } from 'vue';
+import { Icon } from '@iconify/vue';
+import IconInput from './components/IconInput.vue';
+import StateSwitch from './components/StateSwitch.vue';
 
 // 搜索数据
-export const searchList: FormList[] = [
+export const searchList = (t: Translate): BaseSearchList[] => [
   {
-    label: '菜单名称',
-    name: 'menuName',
-    component: 'Input'
-  }
+    label: t('systems.menu.label'),
+    name: 'label',
+    component: 'Input',
+  },
+  {
+    label: t('systems.menu.labelEn'),
+    name: 'labelEn',
+    component: 'Input',
+  },
+  {
+    label: t('system.state'),
+    name: 'state',
+    wrapperWidth: 100,
+    component: 'Select',
+    componentProps: {
+      options: MENU_STATUS(t),
+    },
+  },
 ];
 
-// 表格数据
-export const tableColumns: TableColumnsProps[] = [
-  {
-    title: 'ID',
-    dataIndex: 'id',
-    width: 150
-  },
-  {
-    title: '中文名称',
-    dataIndex: 'menuName',
-    width: 100
-  },
-  {
-    title: '接口权限',
-    dataIndex: 'permissions',
-    width: 180
-  },
-  {
-    title: '菜单路由',
-    dataIndex: 'menuRoute',
-    width: 180
-  },
-  {
-    title: '菜单类型',
-    dataIndex: 'menuType',
-    echoArr: MENU_TYPE,
-    width: 100
-  },
-  {
-    title: '客户端',
-    dataIndex: 'clientName',
-    width: 100
-  },
-  {
-    title: '排序',
-    dataIndex: 'sortNum',
-    width: 80
-  },
-  {
-    title: '操作',
-    dataIndex: 'operate',
-    width: 320,
-    fixed: 'right',
-    ellipsis: false,
-  }
-];
+/**
+ * 表格数据
+ */
+export const tableColumns = (t: Translate): TableColumn[] => {
+  return [
+    {
+      title: 'ID',
+      dataIndex: 'id',
+      width: 100,
+    },
+    {
+      title: t('systems.menu.icon'),
+      dataIndex: 'icon',
+      width: 50,
+      customRender: ({ text }) =>
+        h('div', { class: 'text-center' }, [
+          text ? h(Icon, { icon: String(text), class: 'text-16px' }) : EMPTY_VALUE,
+        ]),
+    },
+    {
+      title: t('systems.menu.label'),
+      dataIndex: 'label',
+      width: 200,
+    },
+    {
+      title: t('systems.menu.labelEn'),
+      dataIndex: 'labelEn',
+      width: 200,
+    },
+    {
+      title: t('public.type'),
+      dataIndex: 'type',
+      width: 60,
+      ellipsis: false,
+      enum: MENU_TYPES(t),
+    },
+    {
+      title: t('systems.menu.router'),
+      dataIndex: 'router',
+      width: 200,
+    },
+    {
+      title: t('system.status'),
+      dataIndex: 'state',
+      width: 80,
+      customRender: ({ text, record }) => h(StateSwitch, { value: text as number, record: record as { id: string; label: string; labelEn: string } }),
+    },
+    {
+      title: t('systems.menu.sort'),
+      dataIndex: 'order',
+      width: 50,
+    },
+    {
+      title: t('systems.menu.rule'),
+      dataIndex: 'rule',
+      width: 150,
+    },
+    {
+      title: t('public.creationTime'),
+      dataIndex: 'createdAt',
+      width: 200,
+    },
+    {
+      title: t('public.updateTime'),
+      dataIndex: 'updatedAt',
+      width: 200,
+    },
+    {
+      title: t('public.operate'),
+      dataIndex: 'operate',
+      width: 210,
+      fixed: 'right',
+    },
+  ];
+};
 
-// 新增数据
-export const createList = (parentList: DefaultOptionType[], menuType = 0): FormList[] => [
+/**
+ * 新增数据
+ * @param t - 翻译函数
+ * @param id - 编辑id
+ * @param type - 菜单类型
+ */
+export const createList = (t: Translate, id: string, type?: number): BaseFormList[] => [
   {
-    label: '中文名称',
-    name: 'menuName',
-    rules: FORM_REQUIRED,
-    component: 'Input',
+    label: t('systems.menu.parentMenu'),
+    name: 'parentId',
+    component: 'ApiTreeSelect',
     componentProps: {
-      maxlength: 60,
-    }
+      api: getMenuList,
+      fieldNames: { label: 'label', value: 'id' },
+    },
   },
   {
-    label: '菜单编码',
-    name: 'menuNo',
+    label: t('systems.menu.label'),
+    name: 'label',
     rules: FORM_REQUIRED,
     component: 'Input',
-    componentProps: {
-      maxlength: 60,
-    }
   },
   {
-    label: '接口权限',
-    name: 'permissions',
+    label: t('systems.menu.labelEn'),
+    name: 'labelEn',
     rules: FORM_REQUIRED,
     component: 'Input',
-    componentProps: {
-      maxlength: 60,
-    }
   },
   {
-    label: '菜单类型',
-    name: 'menuType',
+    label: t('public.type'),
+    name: 'type',
+    rules: FORM_REQUIRED,
+    component: 'RadioGroup',
+    componentProps: {
+      options: MENU_TYPES(t),
+    },
+  },
+  {
+    label: t('systems.menu.router'),
+    name: 'router',
+    rules: [{ required: type !== 3 }],
+    component: 'Input',
+  },
+  {
+    label: t('system.state'),
+    name: 'state',
     rules: FORM_REQUIRED,
     component: 'Select',
     componentProps: {
-      options: MENU_TYPE
-    }
+      options: MENU_STATUS(t),
+    },
   },
   {
-    label: '菜单路由',
-    name: 'menuRoute',
+    label: t('systems.menu.sort'),
+    name: 'order',
     rules: FORM_REQUIRED,
-    hidden: menuType !== 1,
-    component: 'Input'
+    component: 'InputNumber',
   },
   {
-    label: '排序',
-    name: 'sortNum',
-    rules: FORM_REQUIRED,
+    label: t('systems.menu.rule'),
+    name: 'rule',
+    rules: [{ required: type === 3 }],
     component: 'Input',
-    componentProps: {
-      maxlength: 20,
-    }
   },
   {
-    label: '父级菜单',
-    name: 'parentId',
-    component: 'TreeSelect',
+    label: t('systems.menu.icon'),
+    name: 'icon',
+    component: 'customize',
+    render: (props) => h(IconInput, props),
+  },
+  {
+    label: t('system.permissionButton'),
+    name: 'actions',
+    hidden: !!id && type !== 3,
+    component: 'CheckboxGroup',
     componentProps: {
-      treeData: parentList,
-      fieldNames: {
-        label: 'menuName',
-        value: 'id'
-      }
-    }
+      options: MENU_ACTIONS(t),
+    },
   },
 ];

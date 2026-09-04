@@ -1,39 +1,48 @@
-import type { RouteRecordRaw } from "vue-router";
+import type { RouteRecordRaw } from 'vue-router';
 import { createRouter, createWebHashHistory } from 'vue-router';
-import { layoutRoutes } from './utils/helper';
-import routes from '~pages';
+import { handleRoutes } from './utils/helper';
 
-// 自动生成路径转换为layout嵌套路径
-const layouts = layoutRoutes(routes);
+// pages目录自动生成路由（懒加载）
+const pageModules = import.meta.glob('../pages/**/*.vue');
 
-layouts.push({
-  path: "/:pathMatch(.*)*",
-  name: 'NotFound',
-  component: () => import('../pages/404.vue')
-});
-
-layouts.push({
-  path: "/403",
-  name: 'NoPermission',
-  component: () => import('../pages/403.vue')
-});
-
-const newRoutes: RouteRecordRaw[] = [
+const routes: RouteRecordRaw[] = [
   {
-    path: "/login",
-    component: () => import('../pages/login/index.vue')
+    path: '/login',
+    name: 'Login',
+    component: () => import('@/pages/login/index.vue'),
   },
   {
-    path: "/",
-    component: () => import('../layouts/default.vue'),
-    children: layouts
-  }
+    path: '/forget',
+    name: 'Forget',
+    component: () => import('@/pages/forget/index.vue'),
+  },
+  {
+    path: '/',
+    name: 'Layout',
+    component: () => import('@/layouts/index.vue'),
+    children: [
+      // 根页面（重定向至第一个有效菜单）
+      {
+        path: '/',
+        name: 'Index',
+        component: () => import('@/pages/index.vue'),
+      },
+      // pages目录自动生成的子路由
+      ...handleRoutes(pageModules),
+      // 404
+      {
+        path: '/:pathMatch(.*)*',
+        name: 'NotFound',
+        component: () => import('@/pages/404.vue'),
+      },
+    ],
+  },
 ];
 
 const router = createRouter({
   history: createWebHashHistory(),
-  routes: newRoutes,
+  routes,
   scrollBehavior: () => ({ left: 0, top: 0 }),
 });
 
-export { router };
+export default router;

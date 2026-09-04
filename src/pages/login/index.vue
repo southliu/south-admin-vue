@@ -1,189 +1,160 @@
-<template>
-  <div v-if="!isLock" class="bg-light-400 w-screen h-screen">
-    <div class="box w-300px h-290px p-30px rounded-5px bg-white box-border">
-      <div class="pb-30px pt-10px flex items-center justify-center">
-        <img
-          class="mr-2 object-contain"
-          :width="30"
-          :height="30"
-          :src="Logo"
-          alt="LOGO"
-        />
-        <span class="text-xl font-bold tracking-2px color-#000">
-          系统登录
-        </span>
-      </div>
-      <Form
-        :model="formState"
-        name="horizontal_login"
-        @finish="handleFinish"
-        @finishFailed="handleFinishFailed"
-      >
-        <FormItem
-          name="username"
-          :rules="[{ required: true, message: '请输入用户名' }]"
-        >
-          <Input
-            v-model:value="formState.username"
-            allowClear
-            placeholder="用户名"
-            autoComplete="username"
-          >
-            <template #prefix>
-              <UserOutlined class="site-form-item-icon" />
-            </template>
-          </Input>
-        </FormItem>
-
-        <FormItem
-          name="password"
-          :rules="[
-            { required: true, message: '请输入密码' },
-            PASSWORD_RULE
-          ]"
-        >
-          <InputPassword
-            v-model:value="formState.password"
-            allowClear
-            placeholder="密码"
-            autoComplete="current-password"
-          >
-           <template #prefix>
-              <LockOutlined class="site-form-item-icon" />
-            </template>
-          </InputPassword>
-        </FormItem>
-
-        <FormItem>
-          <Button
-            type="primary"
-            htmlType="submit"
-            class="w-full mt-5px rounded-5px tracking-2px"
-            :loading="isLoading && !isLock"
-            :disabled="formState.username === '' || formState.password.length < 6 || isLock"
-          >
-            登录
-          </Button>
-        </FormItem>
-      </Form>
-    </div>
-  </div>
-
-  <PageLoading v-else />
-</template>
-
-<script lang="ts" setup>
-import type { FormProps } from 'ant-design-vue';
+<script setup lang="ts">
 import type { LoginData } from './model';
-import { message } from 'ant-design-vue';
-import { onMounted, reactive, ref } from 'vue';
-import { UserOutlined, LockOutlined } from '@ant-design/icons-vue';
-import { login } from '@/servers/login';
+import { Button, Checkbox, Form, Input } from 'ant-design-vue';
+import { useI18n } from 'vue-i18n';
+import { reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { watch } from 'vue';
+import I18n from '@/components/I18n/index.vue';
+import Theme from '@/components/Theme/index.vue';
+import { login } from '@/servers/login';
+import { LOGIN_EXPIRED_MSG } from '@/servers/request';
 import { setTitle } from '@/utils/helper';
-import { useTabStore } from '@/stores/tabs';
+import { getMenuList } from '@/servers/system/menu';
+import { encryption, decryption } from '@/utils/crypto';
+import { getFirstMenu } from '@/menus/utils/helper';
+import { cancelAllRequest } from '@/servers';
+import { message } from '@/utils/message';
+import { PASSWORD_RULE, THEME_KEY } from '@/utils/config';
 import { useToken } from '@/hooks/useToken';
-import { useMenuStore } from '@/stores/menu';
-import { useUserStore } from '@/stores/user';
-import { PASSWORD_RULE } from '@/utils/verify';
-import { useWatermark } from '@/hooks/useWatermark';
-import { permissionsToArray } from '@/utils/permissions';
-import { handleFilterApiMenu, getFirstMenu } from '@/utils/menu';
-import { getSystemMenuTree } from '@/servers/system/menu';
-import {
-  Form,
-  FormItem,
-  Button,
-  Input,
-  InputPassword
-} from 'ant-design-vue';
-import Logo from '@/assets/images/logo.png';
-import NProgress from 'nprogress';
-import PageLoading from '@/components/Loading/PageLoading.vue';
+import { useCommonStore } from '@/hooks/useCommonStore';
+import { usePublicStore } from '@/stores/public';
+import Logo from '@/assets/images/logo.svg';
 
-setTitle('登录');
+defineOptions({ name: 'Login' });
+
+const CHECK_REMEMBER = 'remember_me';
+const USER_USERNAME = 'login_username';
+const USER_PASSWORD = 'login_password';
+
+const { t, locale } = useI18n();
 const route = useRoute();
 const router = useRouter();
-const tabStore = useTabStore();
-const userStore = useUserStore();
-const menuStore = useMenuStore();
-const { setUserInfo, setPermissions } = userStore;
-const { closeAllTab } = tabStore;
-const { setMenus } = menuStore;
 const { setToken } = useToken();
-const [_, RemoveWatermark] = useWatermark();
+const publicStore = usePublicStore();
+const themeCache = (localStorage.getItem(THEME_KEY) || 'light') as 'dark' | 'light';
+
 const isLoading = ref(false);
-const isLock = ref(false);
+const isRemember = ref(true);
 
 const formState = reactive<LoginData>({
-  username: 'admin',
-  password: 'admin123456',
+  username: import.meta.env.VITE_SHOW_DEFAULT_ACCOUNT === 'true' ? 'admin' : '',
+  password: import.meta.env.VITE_SHOW_DEFAULT_ACCOUNT === 'true' ? 'admin123456' : '',
 });
 
-onMounted(() => {
-  NProgress.done();
-  // 清除水印
-  RemoveWatermark();
+// 主题初始化
+if (themeCache === 'dark') {
+  document.body.className = 'theme-dark';
+}
+publicStore.setThemeValue(themeCache === 'dark' ? 'dark' : 'light');
 
-  // 如果是无权限退出，清除标签选择
-  if (route.query?.state === '401') {
-    closeAllTab();
+// 初始化
+const init = () => {
+  // 清除上一会话的残留请求
+  cancelAllRequest();
+
+  // 如果存在记住我缓存
+  const remember = localStorage.getItem(CHECK_REMEMBER);
+  isRemember.value = remember !== 'false';
+
+  // 如果存在账号密码缓存，则自动填充
+  const username = localStorage.getItem(USER_USERNAME);
+  const password = localStorage.getItem(USER_PASSWORD);
+  if (username && password) {
+    const newPassword = decryption(password) as { value: string } | null;
+    formState.username = username;
+    formState.password = newPassword?.value || '';
   }
-});
 
-/** 获取用户菜单 */
-const getUserMenu = async (permissions: string[]) => {
-  try {
-    isLoading.value = true;
-    const { code, data } = await getSystemMenuTree({ isLayout: true });
-    if (Number(code) !== 200) return;
-    const menuData = handleFilterApiMenu(data, permissions);
-    setMenus(menuData);
-    return menuData;
-  } finally {
-    isLoading.value = false;
+  // 读取权限过期提示（由请求拦截器在整页跳转前写入 localStorage）
+  const expiredMsg = localStorage.getItem(LOGIN_EXPIRED_MSG);
+  if (expiredMsg) {
+    message.error({ content: expiredMsg, key: 'permission-expired' });
+    localStorage.removeItem(LOGIN_EXPIRED_MSG);
   }
 };
+init();
 
-/** 处理跳转第一个有效菜单 */
-const handleGoFirstMenu = async (permissions: string[]) => {
-  try {
-    isLoading.value = true;
-    const menuData = await getUserMenu(permissions);
-    if (!menuData) return;
-    const firstMenu = getFirstMenu(menuData || [], permissions);
+// 语言切换修改title
+watch(
+  locale,
+  () => {
+    setTitle(t, t('login.login'));
+  },
+  { immediate: true },
+);
 
-    if (!firstMenu) {
-      return message.error({ content: '用户暂无权限登录', key: 'menu' });
-    }
+/** 获取菜单数据 */
+const getMenuData = async () => {
+  const { code, data } = await getMenuList();
+  if (Number(code) !== 200) return [];
+  return data || [];
+};
 
-    setMenus(menuData);
-    router.push(firstMenu);
-  } finally {
-    isLoading.value = false;
+/**
+ * 菜单跳转
+ * @param perms - 权限列表
+ */
+const handleGoMenu = async (perms: string[]) => {
+  let menuData = useCommonStore().menuList.value;
+  if (!menuData?.length) {
+    menuData = (await getMenuData()) as typeof menuData;
   }
+
+  // 菜单仍为空（接口失败或返回空），无法确定跳转目标
+  if (!menuData?.length) {
+    return message.error({ content: t('login.notPermissions'), key: 'permissions' });
+  }
+
+  const search = route.fullPath.replace(route.path, '');
+
+  // 如果存在重定向
+  if (search?.includes('?redirect=')) {
+    const start = search.indexOf('?redirect=') + '?redirect='.length;
+    const url = search.substring(start);
+    if (url) {
+      router.push(decodeURIComponent(url));
+      return;
+    }
+  }
+
+  // 有权限则直接跳转第一个有效菜单
+  const firstMenu = getFirstMenu(menuData, perms);
+  if (!firstMenu) {
+    return message.error({ content: t('login.notPermissions'), key: 'permissions' });
+  }
+  router.push(firstMenu);
 };
 
 /**
  * 处理登录
  * @param values - 表单数据
  */
-const handleFinish: FormProps['onFinish'] = async (values: LoginData) => {
+const handleFinish = async (values: LoginData) => {
   try {
     isLoading.value = true;
     const { code, data } = await login(values);
     if (Number(code) !== 200) return;
-    const { token, user, permissions } = data;
+    const { token, user, permissions: perms } = data;
 
-    if (!permissions?.length || !token) {
-      return message.error({ content: '用户暂无权限登录', key: 'permissions' });
+    // 处理记住我逻辑
+    const passwordObj = { value: values.password, expire: 0 };
+    handleRemember(values.username, encryption(passwordObj));
+
+    if (!perms?.length || !token) {
+      return message.error({ content: t('login.notPermissions'), key: 'permissions' });
     }
 
-    const newPermissions = permissionsToArray(permissions);
     setToken(token);
-    setUserInfo(user);
-    setPermissions(newPermissions);
-    handleGoFirstMenu(newPermissions);
+    const { userStore, menuStore } = useCommonStore();
+    userStore.setUserInfo(user);
+    userStore.setPermissions(perms);
+
+    // 缓存菜单
+    const menuData = await getMenuData();
+    menuStore.setMenuList(menuData);
+
+    await handleGoMenu(perms);
   } finally {
     isLoading.value = false;
   }
@@ -193,16 +164,129 @@ const handleFinish: FormProps['onFinish'] = async (values: LoginData) => {
  * 处理失败
  * @param errors - 错误信息
  */
-const handleFinishFailed: FormProps['onFinishFailed'] = errors => {
+const handleFinishFailed = (errors: unknown) => {
   console.error('错误信息:', errors);
+};
+
+/** 点击记住我 */
+const onRemember = () => {
+  isRemember.value = !isRemember.value;
+  localStorage.setItem(CHECK_REMEMBER, isRemember.value ? 'true' : 'false');
+};
+
+/**
+ * 记住我逻辑
+ */
+const handleRemember = (username: string, password: string) => {
+  if (isRemember.value) {
+    localStorage.setItem(USER_USERNAME, username);
+    localStorage.setItem(USER_PASSWORD, password);
+  } else {
+    localStorage.removeItem(USER_USERNAME);
+    localStorage.removeItem(USER_PASSWORD);
+  }
+};
+
+/** 点击忘记密码 */
+const onForgetPassword = () => {
+  router.push(`/forget${route.fullPath.replace(route.path, '')}`);
 };
 </script>
 
-<style lang="less" scoped>
-.box {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-}
-</style>
+<template>
+  <div
+    :class="`
+      ${themeCache === 'dark' ? 'bg-black text-white' : 'bg-light-400'}
+      w-screen
+      h-screen
+      relative
+    `"
+  >
+    <div class="absolute top-5 right-5 flex">
+      <I18n />
+      <Theme />
+    </div>
+
+    <div
+      :class="`
+        ${themeCache === 'dark' ? 'bg-black bg-dark-200' : 'bg-white'}
+        w-340px
+        p-1.8rem
+        rounded-10px
+        box-border
+        absolute
+        left-1/2
+        top-1/2
+        -translate-x-1/2
+        -translate-y-1/2
+        shadow-[2px_5px_20px_rgba(0,0,0,0.1)]
+      `"
+    >
+      <div class="flex items-center justify-center pb-20px pt-10px">
+        <img class="mr-2 object-contain" width="32" height="32" :src="Logo" alt="LOGO" />
+        <span class="text-22px font-bold tracking-2px">{{ t('login.systemLogin') }}</span>
+      </div>
+
+      <Form
+        ref="formRef"
+        :model="formState"
+        layout="vertical"
+        name="horizontal_login"
+        autocomplete="on"
+        @finish="handleFinish"
+        @finish-failed="handleFinishFailed"
+      >
+        <div class="mb-8px text-14px text-#AAA6A6">{{ t('login.username') }}</div>
+
+        <Form.Item
+          name="username"
+          class="!mb-15px"
+          :rules="[{ required: true, message: t('public.pleaseEnter', { name: t('login.username') }) }]"
+        >
+          <Input
+            v-model:value="formState.username"
+            allow-clear
+            :placeholder="t('public.pleaseEnter', { name: t('login.username') })"
+            autocomplete="username"
+          />
+        </Form.Item>
+
+        <div class="mb-8px text-14px text-#AAA6A6">{{ t('login.password') }}</div>
+
+        <Form.Item
+          name="password"
+          class="!mb-15px"
+          :rules="[
+            { required: true, message: t('public.pleaseEnter', { name: t('login.password') }) },
+            PASSWORD_RULE(t),
+          ]"
+        >
+          <Input.Password
+            v-model:value="formState.password"
+            :placeholder="t('public.pleaseEnter', { name: t('login.password') })"
+            autocomplete="current-password"
+          />
+        </Form.Item>
+
+        <Button
+          type="primary"
+          html-type="submit"
+          class="mt-15px mb-25px w-full rounded-5px tracking-2px"
+          :loading="isLoading"
+        >
+          {{ t('login.login') }}
+        </Button>
+      </Form>
+
+      <div class="mb-5px flex items-center justify-between px-1px">
+        <Checkbox :checked="isRemember" @change="onRemember">
+          {{ t('login.rememberMe') }}
+        </Checkbox>
+
+        <div class="cursor-pointer text-blue-500" @click="onForgetPassword">
+          {{ t('login.forgetPassword') }}
+        </div>
+      </div>
+    </div>
+  </div>
+</template>

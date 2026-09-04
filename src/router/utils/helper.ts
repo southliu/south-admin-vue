@@ -1,81 +1,55 @@
-import type { RouteRecordRaw } from "vue-router";
-import { firstCapitalize } from "@/utils/helper";
-import { ROUTER_EXCLUDE } from "@/utils/config";
-import { message } from "ant-design-vue";
-import axios from "axios";
+import type { RouteRecordRaw } from 'vue-router';
+
+/** 路由排除项（目录/文件名包含这些字符串则不注册为路由） */
+export const ROUTER_EXCLUDE = ['login', 'forget', 'components', 'utils', 'lib', 'hooks', 'model.ts', '404.vue', '403.vue'];
 
 /**
- * 路由转为Keepalive
- * @param route - 路由
+ * 路径分段首字母大写
+ * @param path - 路由路径
  */
-export function routeToKeepalive(route: string): string {
-  if (typeof route !== "string") return '';
-
-  let result = '';
-  const arr = route.split('/'); // 分割路由
-
-  for (let i = 0; i < arr.length; i++) {
-    result += firstCapitalize(arr[i]);
-  }
-
-  return result;
+export function pathToPascalName(path: string): string {
+  return path
+    .split('/')
+    .filter(Boolean)
+    .map((segment) => {
+      // 动态参数 :id -> Id
+      const name = segment.startsWith(':') ? segment.slice(1) : segment;
+      return name.charAt(0).toUpperCase() + name.slice(1);
+    })
+    .join('');
 }
 
 /**
- * 匹配路由是否在排查名单中
- * @param path - 路径
+ * 处理pages目录为路由数据
+ * @param modules - import.meta.glob返回的模块表
  */
-function handleRouterExclude(path: string): boolean {
-  for (let i = 0; i < ROUTER_EXCLUDE.length; i++) {
-    const item = ROUTER_EXCLUDE[i];
-    if (path.includes(item)) return true;
+export function handleRoutes(modules: Record<string, () => Promise<unknown>>): RouteRecordRaw[] {
+  const routes: RouteRecordRaw[] = [];
+
+  for (const filePath in modules) {
+    // ../pages/system/user/index.vue -> /system/user
+    let routePath = filePath.replace('../pages', '').replace(/\.vue$/, '');
+
+    // 去除结尾index
+    if (routePath.endsWith('/index')) {
+      routePath = routePath.slice(0, -'/index'.length);
+    }
+
+    // 动态路由参数 [option] -> :option
+    routePath = routePath.replace(/\[(\w+)\]/g, ':$1');
+
+    // 排除项
+    if (ROUTER_EXCLUDE.some((exclude) => filePath.includes(exclude))) continue;
+
+    // 根页面单独处理（pages/index.vue -> /）
+    if (routePath === '') continue;
+
+    routes.push({
+      path: routePath,
+      name: pathToPascalName(routePath),
+      component: modules[filePath],
+    } as RouteRecordRaw);
   }
 
-  return false;
+  return routes;
 }
-
-/**
- * 路由添加layout
- * @param routes - 路由数据
- */
-export function layoutRoutes(routes: RouteRecordRaw[]): RouteRecordRaw[] {
-  const layouts: RouteRecordRaw[] = []; // layout内部组件
-
-  for (let i = 0; i < routes.length; i++) {
-    const item = routes[i];
-    if (handleRouterExclude(item.path)) continue;
-    layouts.push(item);
-  }
-
-  return layouts;
-}
-
-/**  版本监控 */
-export const versionCheck = async (
-  versionStore: string,
-  setVersion: (str: string) => void
-) => {
-  if (import.meta.env.MODE === 'development') return;
-  const { data: { version } } = await axios.get('version.json');
-
-  // 首次进入则缓存本地数据
-  if (!versionStore) {
-    return setVersion(String(version));
-  }
-
-  if (versionStore !== String(version)) {
-    setVersion(String(version));
-    message.info({
-      content: '发现新内容，自动更新中...',
-      key: 'reload',
-      onClose: () => {
-        let timer: NodeJS.Timeout | null = setTimeout(() => {
-          clearTimeout(timer as NodeJS.Timeout);
-          timer = null;
-          window.location.reload();
-        }, 60000);
-      }
-    });
-  }
-};
-  

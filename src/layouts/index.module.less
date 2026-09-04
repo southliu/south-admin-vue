@@ -1,0 +1,99 @@
+@import url('@/assets/css/default.less');
+
+.header {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: @layout-left;
+  z-index: 15;
+  box-sizing: border-box;
+  flex-direction: column;
+  height: @layout-top;
+  overflow: hidden;
+  background-color: #fff;
+  border-bottom: 1px solid #eee;
+}
+
+.header-close-menu {
+  left: @layout-left-close;
+}
+
+.header-driver {
+  border-bottom: 1px solid #eee;
+}
+
+.menu {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: @layout-left !important;
+  background-color: #000;
+}
+
+.menu-close {
+  width: @layout-left-close !important;
+}
+
+.con {
+  position: relative;
+  inset: @layout-top 0 0 @layout-left;
+  box-sizing: border-box;
+  width: calc(100% - @layout-left);
+  min-height: calc(100vh - @layout-top);
+}
+
+.con-close-menu {
+  left: @layout-left-close;
+  width: calc(100% - @layout-left-close);
+}
+
+.con-maximize {
+  top: calc(@layout-top / 2);
+  left: 0 !important;
+  width: 100%;
+}
+
+.header-none {
+  left: 0 !important;
+  height: calc(@layout-top / 2);
+}
+
+.none {
+  display: none !important;
+}
+
+.menu-none {
+  width: 0 !important;
+  opacity: 0 !important;
+}
+
+.layout-tabs {
+  :global(.ant-tabs-tab-active) {
+    background-color: #1d4ed8 !important;
+  }
+
+  :global(.ant-tabs-tab-active .ant-tabs-tab-btn) {
+    color: #fff !important;
+  }
+
+  :global(.ant-tabs-tab-active .ant-tabs-tab-remove) {
+    color: #fff !important;
+  }
+
+  :global(.ant-tabs-tab) {
+    padding: 5px 16px 8px !important;
+  }
+}
+
+/* 页面切换动画（与 React motion 一致：透明度+缩放进入） */
+.page-enter-active {
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: scale(0.95);
+}

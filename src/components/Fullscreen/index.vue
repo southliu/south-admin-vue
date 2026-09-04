@@ -1,23 +1,23 @@
+<script setup lang="ts">
+import { Tooltip } from 'ant-design-vue';
+import { Icon } from '@iconify/vue';
+import { useI18n } from 'vue-i18n';
+import { useFullscreen } from '@/hooks/useFullscreen';
+
+defineOptions({ name: 'Fullscreen' });
+
+const { t } = useI18n();
+const { isFullscreen, toggleFullscreen } = useFullscreen();
+</script>
+
 <template>
-  <Tooltip placement="bottom">
-    <template #title>{{ !isFullscreen ? '全屏' : '退出全屏' }}</template>
+  <Tooltip :title="isFullscreen ? t('public.exitFullscreen') : t('public.fullScreen')">
     <div
-      class="flex items-center justify-center text-lg mr-10px cursor-pointer"
-      @click="toggle"
+      class="mr-3 flex cursor-pointer items-center justify-center text-lg"
+      @click="toggleFullscreen"
     >
-      <Icon icon="gridicons-fullscreen-exit" v-if="isFullscreen" />
-      <Icon icon="gridicons-fullscreen" v-else />
+      <Icon v-show="isFullscreen" icon="gridicons-fullscreen-exit" />
+      <Icon v-show="!isFullscreen" icon="gridicons-fullscreen" />
     </div>
   </Tooltip>
 </template>
-
-<script lang="ts" setup>
-/**
- * @description: 全屏组件
- */
-import { useFullscreen } from '@vueuse/core';
-import { Tooltip } from 'ant-design-vue';
-import { Icon } from '@iconify/vue';
-
-const { isFullscreen, toggle } = useFullscreen();
-</script>

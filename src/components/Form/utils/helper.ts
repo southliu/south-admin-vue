@@ -1,118 +1,132 @@
-import type { ComponentType, FormData, FormList } from '#/form';
-import type { WangEditorProps } from '@/components/WangEditor/model';
-import type { DatePickerProps } from 'ant-design-vue';
-import type { CheckboxChangeEvent } from 'ant-design-vue/lib/checkbox/interface';
-import type { Dayjs } from 'dayjs';
-import { getDeepNestedObj } from '@/utils/helper';
-import { PLEASE_ENTER, PLEASE_SELECT, DATE_FORMAT } from '@/utils/config';
-import dayjs from 'dayjs';
+import type { FormItemProps } from 'ant-design-vue';
+import type { ComponentProps, ComponentType, BaseFormList } from '#/form';
+import type { Translate } from '@/utils/config';
+import { DATE_FORMAT, TIME_PICKER_FORMAT } from '@/utils/config';
 
 /**
- * 生成占位符
+ * 处理子节点的值的属性
  * @param component - 组件名
  */
-export function createPlaceholder(component: ComponentType): string | string[] {
-  if (component.includes('RangePicker')) {
-    return ['开始日期', '结束日期'];
+export function handleValuePropName(component: ComponentType): string {
+  switch (component) {
+    case 'Switch':
+      return 'checked';
+
+    case 'Upload':
+      return 'fileList';
+
+    default:
+      return 'value';
   }
-  if (component.includes('Select') || component.includes('Picker')) {
-    return PLEASE_SELECT;
-  }
-  return PLEASE_ENTER;
 }
 
 /**
- * 获取组件属性
- * @param item - 组件项
- * @param data - 数据对象
- * @param setData - 修改数据
+ * 初始化组件自定义属性
+ * @param t - 翻译函数
+ * @param component - 组件名
  */
-export function getComponentProps(
-  item: FormList,
-  data: FormData,
-  setData: (key: string | string[], value: unknown) => void
-) {
-  const key = item.name;
-  const compData = getDeepNestedObj(key, data);
-
-  switch (item.component) {
-    // 富文本
-    case 'Editor':
+export function initCompProps(t: Translate, component: ComponentType): ComponentProps {
+  switch (component) {
+    // 输入框
+    case 'Input':
       return {
-        modelValue: compData as string,
-        height: (compData as WangEditorProps)?.height || 300,
-        'onUpdate:modelValue': (value: string) => setData(key, value)
+        allowClear: true,
+        placeholder: t('public.inputPleaseEnter'),
       };
 
-    // 复选框
-    case 'Checkbox':
+    // 下拉框
+    case 'Select':
       return {
-        checked: !!compData,
-        innerHTML: data?.name || '',
-        'onChange': (value: CheckboxChangeEvent) => {
-          setData(key, value.target.checked);
-        },
-        'onUpdate:value': (value: CheckboxChangeEvent) => {
-          setData(key, value);
-        }
+        allowClear: true,
+        showSearch: true,
+        placeholder: t('public.inputPleaseSelect'),
       };
 
-    // 复选框组
-    case 'CheckboxGroup':
+    // 树形下拉框
+    case 'TreeSelect':
       return {
-        value: Array.isArray(compData) ? compData : [],
-        'onUpdate:value': (value: Record<string, unknown>) => {
-          setData(key, value);
-        }
+        allowClear: true,
+        showSearch: true,
+        placeholder: t('public.inputPleaseSelect'),
       };
 
-    // 开关
-    case 'Switch':
+    // 数字框
+    case 'InputNumber':
       return {
-        checked: !!compData,
-        'onChange': (value: boolean) => {
-          setData(key, value);
-        }
+        placeholder: t('public.inputPleaseEnter'),
+      };
+
+    // 日期
+    case 'DatePicker':
+      return {
+        placeholder: t('public.inputPleaseSelect'),
+        format: DATE_FORMAT,
+      };
+
+    // 日期区间
+    case 'RangePicker':
+      return {
+        placeholder: [t('public.inputPleaseSelect'), t('public.inputPleaseSelect')],
+        format: [DATE_FORMAT, DATE_FORMAT],
       };
 
     // 时间
-    case 'DatePicker': {
-      const dateValue = compData ? dayjs(compData as string) : undefined;
-      const format = ((item?.componentProps as DatePickerProps)?.format || DATE_FORMAT) as string;
+    case 'TimePicker':
       return {
-        value: dateValue,
-        defaultValue: dateValue,
-        valueFormat: format,
-        format,
-        'onUpdate:value': (value: Dayjs | string) => {
-          setData(key, value);
-        }
+        placeholder: t('public.inputPleaseSelect'),
+        format: TIME_PICKER_FORMAT,
       };
-    }
 
     // 时间区间
-    case 'RangePicker': {
-      const format = ((item?.componentProps as DatePickerProps)?.format || DATE_FORMAT) as string;
-      const rangeValue: [Dayjs, Dayjs] | undefined = (compData as [string, string])?.length > 1 && (compData as [string, string])?.[0] ?
-        [dayjs((compData as [string, string])[0]), dayjs((compData as [string, string])[1])] : undefined;
+    case 'TimeRangePicker':
       return {
-        value: rangeValue,
-        defaultValue: rangeValue,
-        valueFormat: format,
-        format,
-        'onUpdate:value': (value: [Dayjs, Dayjs] | [string, string]) => {
-          if (value?.length < 2) return setData(key, []);
-          setData(key, value);
-        }
+        placeholder: [t('public.inputPleaseSelect'), t('public.inputPleaseSelect')],
+        format: [TIME_PICKER_FORMAT, TIME_PICKER_FORMAT],
       };
-    }
 
     default:
       return {
-        value: compData,
-        'onUpdate:value': (value: Record<string, unknown>) => {
-          setData(key, value);
-        }
+        allowClear: true,
       };
   }
 }
+
+/**
+ * 过滤表单数据
+ * @param data - 表单数据
+ */
+export const filterFormItem = (data: BaseFormList): FormItemProps => {
+  const result: Record<string, unknown> = { ...data };
+  delete result.wrapperWidth;
+  delete result.componentProps;
+  delete result.render;
+  delete result.slot;
+  delete result.unit;
+  delete result.labelWidth;
+
+  // 如果当前项是隐藏且存在规则，则移除规则校验
+  if (result.hidden && (result.rules as unknown[] | undefined)?.length) {
+    result.rules = undefined;
+  }
+
+  return result as FormItemProps;
+};
+
+/**
+ * 过滤空字符串和前后空格
+ * @param values - 表单值
+ */
+export const filterEmptyStr = (values: Record<string, unknown>) => {
+  const params: Record<string, unknown> = {};
+
+  Object.keys(values).forEach((key) => {
+    // 去除前后空格
+    if (typeof values[key] === 'string') {
+      values[key] = (values[key] as string)?.trim();
+    }
+
+    params[key] = values[key];
+  });
+
+  return params;
+};

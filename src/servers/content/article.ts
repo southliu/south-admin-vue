@@ -1,35 +1,33 @@
-import type { PageServerResult, PaginationData, ServerResult, TableData } from '#/public';
-import { request } from '@/servers/request';
+import type { BaseFormData } from '#/form';
+import type { PageServerResult, PaginationData } from '#/public';
+import { request } from '@/servers';
 
 enum API {
-  URL = '/content/article'
+  URL = '/content/article',
 }
 
 /**
  * 获取分页数据
  * @param data - 请求数据
  */
-export function getArticlePage(data: PaginationData) {
-  return request.get<PageServerResult<TableData[]>>(
-    `${API.URL}/page`,
-    { params: data }
-  );
+export function getArticlePage(data: Partial<BaseFormData> & PaginationData) {
+  return request.get<PageServerResult<BaseFormData[]>>(`${API.URL}/page`, { params: data });
 }
 
 /**
  * 根据ID获取数据
- * @param id - 唯一标识
+ * @param id - ID
  */
 export function getArticleById(id: string) {
-  return request.get(`${API.URL}/detail?id=${id}`);
+  return request.get<BaseFormData>(`${API.URL}/detail?id=${id}`);
 }
 
 /**
  * 新增数据
  * @param data - 请求数据
  */
-export function createArticle(data: unknown) {
-  return request.post(API.URL, data);
+export function createArticle(data: BaseFormData) {
+  return request.post(`${API.URL}/create`, data);
 }
 
 /**
@@ -37,8 +35,8 @@ export function createArticle(data: unknown) {
  * @param id - 修改id值
  * @param data - 请求数据
  */
-export function updateArticle(id: string, data: unknown) {
-  return request.put(`${API.URL}/${id}`, data);
+export function updateArticle(id: string, data: BaseFormData) {
+  return request.put(`${API.URL}/update/${id}`, data);
 }
 
 /**
@@ -46,5 +44,5 @@ export function updateArticle(id: string, data: unknown) {
  * @param id - 删除id值
  */
 export function deleteArticle(id: string) {
-  return request.delete(`${API.URL}/${id}`) as Promise<ServerResult>;
+  return request.delete(`${API.URL}/${id}`);
 }

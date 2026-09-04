@@ -1,67 +1,57 @@
 import { defineStore } from 'pinia';
+import { ref } from 'vue';
 
-interface UserDataInfo {
+/** 用户信息 */
+export interface UserInfo {
   id: number;
   username: string;
+  name: string;
   email: string;
   phone: string;
+  roles: number[];
 }
 
-interface StateData {
-  permissions: string[];
-  userInfo: UserDataInfo;
-}
+/** 用户store */
+export const useUserStore = defineStore('user', () => {
+  // 权限列表
+  const permissions = ref<string[]>([]);
+  // 用户信息
+  const userInfo = ref<UserInfo>({
+    id: 0,
+    username: '',
+    name: '',
+    email: '',
+    phone: '',
+    roles: [],
+  });
 
-export const useUserStore = defineStore({
-  id: 'user',
-  state: () => ({
-    // 用户权限
-    permissions: [],
-    // 用户信息
-    userInfo: {
+  /** 设置权限 */
+  const setPermissions = (value: string[]) => {
+    permissions.value = value;
+  };
+
+  /** 设置用户信息 */
+  const setUserInfo = (value: UserInfo) => {
+    userInfo.value = value;
+  };
+
+  /** 清除用户信息 */
+  const clearInfo = () => {
+    userInfo.value = {
       id: 0,
       username: '',
+      name: '',
       email: '',
-      phone: ''
-    }
-  } as StateData),
-  actions: {
-    /**
-     * 设置用户权限
-     * @param permissions - 权限
-     */
-    setPermissions(permissions: string[]) {
-      this.permissions = permissions;
-    },
-    /**
-     * 获取用户权限
-     */
-    getPermissions() {
-      return this.permissions;
-    },
-    /**
-     * 设置用户信息
-     * @param userInfo - 用户值
-     */
-    setUserInfo(userInfo: UserDataInfo) {
-      this.userInfo = userInfo;
-    },
-    /**
-     * 获取用户信息
-     */
-    getUserInfo() {
-      return this.userInfo;
-    },
-    /**
-     * 清除用户信息
-     */
-    clearInfo() {
-      this.userInfo = {
-        id: 0,
-        username: '',
-        email: '',
-        phone: ''
-      };
-    }
-  },
+      phone: '',
+      roles: [],
+    };
+  };
+
+  return {
+    permissions,
+    userInfo,
+    setPermissions,
+    setUserInfo,
+    clearInfo,
+  };
 });

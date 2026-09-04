@@ -1,40 +1,34 @@
-import type { PageServerResult, PaginationData, TableData } from '#/public';
-import type { DataNode } from 'ant-design-vue/lib/tree';
-import type { Key } from 'ant-design-vue/lib/vc-tree/interface';
-import { request } from '@/servers/request';
+import type { BaseFormData } from '#/form';
+import type { PageServerResult, PaginationData } from '#/public';
+import type { LoginResult } from '@/pages/login/model';
+import { request } from '@/servers';
 
 enum API {
-  URL = '/authority/user',
+  URL = '/system/user',
 }
 
 /**
  * 获取分页数据
  * @param data - 请求数据
  */
-export function getSystemUserPage(data: PaginationData) {
-  return request.get<PageServerResult<TableData[]>>(
-    `${API.URL}/page`,
-    { params: data }
-  );
+export function getUserPage(data: Partial<BaseFormData> & PaginationData) {
+  return request.get<PageServerResult<BaseFormData[]>>(`${API.URL}/page`, { params: data });
 }
 
 /**
  * 根据ID获取数据
- * @param id - 唯一标识
+ * @param id - ID
  */
-export function getSystemUserById(id: string) {
-  return request.get<{
-    defaultCheckedKeys: Key[];
-    treeData: DataNode[];
-  }>(`${API.URL}/detail?id=${id}`);
+export function getUserById(id: string) {
+  return request.get<BaseFormData>(`${API.URL}/detail?id=${id}`);
 }
 
 /**
  * 新增数据
  * @param data - 请求数据
  */
-export function createSystemUser(data: unknown) {
-  return request.post(API.URL, data);
+export function createUser(data: BaseFormData) {
+  return request.post(`${API.URL}/create`, data);
 }
 
 /**
@@ -42,14 +36,30 @@ export function createSystemUser(data: unknown) {
  * @param id - 修改id值
  * @param data - 请求数据
  */
-export function updateSystemUser(id: string, data: unknown) {
-  return request.put(`${API.URL}/${id}`, data);
+export function updateUser(id: string, data: BaseFormData) {
+  return request.put(`${API.URL}/update/${id}`, data);
 }
 
 /**
  * 删除
  * @param id - 删除id值
  */
-export function deleteSystemUser(id: string) {
+export function deleteUser(id: string) {
   return request.delete(`${API.URL}/${id}`);
+}
+
+/**
+ * 批量删除
+ * @param data - 请求数据
+ */
+export function batchDeleteUser(data: BaseFormData) {
+  return request.post(`${API.URL}/batchDelete`, data);
+}
+
+/**
+ * 获取用户刷新权限
+ * @param data - 请求数据
+ */
+export function getUserRefreshPermissions(data: object) {
+  return request.get<LoginResult>(`${API.URL}/refreshPermissions`, { params: data });
 }

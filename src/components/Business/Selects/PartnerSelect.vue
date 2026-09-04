@@ -1,35 +1,14 @@
+<script setup lang="ts">
+import ApiSelect from '@/components/Selects/ApiSelect.vue';
+import { getPartner } from '@/servers/platform/partner';
+
+defineOptions({ name: 'PartnerSelect' });
+</script>
+
 <template>
-  <ApiTreeSelect
-    multiple
+  <ApiSelect
     :api="getPartner"
-    :fieldNames="{ label: 'name', value: 'id' }"
-    @update="handleUpdate"
+    :field-names="{ label: 'name', value: 'id' }"
+    v-bind="$attrs"
   />
 </template>
-
-<script lang="ts" setup>
-/**
- * @description: 合作公司下拉组件
- */
-import type { SelectValue } from 'ant-design-vue/es/select';
-import { getPartner } from '@/servers/platform/partner';
-import ApiTreeSelect from '@/components/Selects/ApiTreeSelect.vue';
-
-defineOptions({
-  name: 'PartnerSelect'
-});
-
-interface DefineEmits {
-  (e: 'update:value', value: SelectValue): void;
-}
-
-const emit = defineEmits<DefineEmits>();
-
-/**
- * 处理更改
- * @param value - 值
- */
-const handleUpdate = (value: SelectValue) => {
-  emit('update:value', value);
-};
-</script>

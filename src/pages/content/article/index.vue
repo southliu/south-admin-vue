@@ -1,155 +1,128 @@
-<template>
-  <BasicContent :isPermission="checkPermission(pagePermission.page)">
-    <template #top>
-      <BasicSearch
-        :list="searchList"
-        :data="searchData"
-        :isLoading="isLoading"
-        @handleFinish="handleSearch"
-      />
-    </template>
-
-    <BtnRow>
-      <CreateBtn
-        v-if="checkPermission(pagePermission.create)"
-        @click="onCreate"
-      />
-    </BtnRow>
-
-    <BasicTable
-      :data="tableData"
-      :columns="tableColumns"
-      :isLoading="isLoading"
-      :pagination="{
-        current: pagination.page,
-        pageSize: pagination.pageSize,
-        total: pagination.total,
-        onChange: handlePagination,
-      }"
-    >
-      <template #operate="{ record }">
-        <UpdateBtn
-          v-if="checkPermission(pagePermission.update)"
-          class="btn-space"
-          :isLoading="isCreateLoading"
-          @click="onUpdate(record)"
-        />
-        <DeleteBtn
-          v-if="checkPermission(pagePermission.delete)"
-          :isLoading="isLoading"
-          @click="handleDelete(record.id)"
-        />
-      </template>
-    </BasicTable>
-  </BasicContent>
-</template>
-
-<script lang="ts" setup>
-import type { FormData } from '#/form';
-import type { TableData, PaginationData } from '#/public';
+<script setup lang="ts">
+import type { BaseFormData } from '#/form';
+import { useI18n } from 'vue-i18n';
+import { computed, onActivated, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { message } from 'ant-design-vue';
-import { onActivated, reactive, ref } from 'vue';
-import { UpdateBtn, DeleteBtn, CreateBtn } from '@/components/Buttons';
-import { pagePermission, searchList, tableColumns } from './model';
-import { checkPermission } from '@/utils/permissions';
-import { usePublicStore } from '@/stores/public';
-import { PAGE_SIZE } from '@/utils/config';
-import { storeToRefs } from 'pinia';
 import { getArticlePage, deleteArticle } from '@/servers/content/article';
-import BtnRow from '@/components/BtnRow/index.vue';
-import BasicContent from '@/components/Content/BasicContent.vue';
-import BasicTable from '@/components/Table/BasicTable.vue';
-import BasicSearch from '@/components/Search/BasicSearch.vue';
+import BaseCard from '@/components/Card/BaseCard.vue';
+import BaseContent from '@/components/Content/BaseContent.vue';
+import BaseSearch from '@/components/Search/BaseSearch.vue';
+import BaseTable from '@/components/Table/BaseTable.vue';
+import BasePagination from '@/components/Pagination/BasePagination.vue';
+import UpdateBtn from '@/components/Buttons/UpdateBtn.vue';
+import DeleteBtn from '@/components/Buttons/DeleteBtn.vue';
+import { checkPermission } from '@/utils/permissions';
+import { INIT_PAGINATION } from '@/utils/config';
+import { message } from '@/utils/message';
+import { useCommonStore } from '@/hooks/useCommonStore';
+import { usePublicStore } from '@/stores/public';
+import { searchList, tableColumns } from './model';
 
-defineOptions({
-  name: 'ContentArticle'
-});
+defineOptions({ name: 'ContentArticle' });
 
+// 当前行数据
+interface RowData {
+  id: string;
+  title: string;
+}
+
+const { t } = useI18n();
 const router = useRouter();
 const publicStore = usePublicStore();
-const { setRefreshPage } = publicStore;
-const { isRefreshPage } = storeToRefs(publicStore);
+
 const isLoading = ref(false);
-const isCreateLoading = ref(false);
+const searchData = ref<BaseFormData>({});
+const page = ref(INIT_PAGINATION.page);
+const pageSize = ref(INIT_PAGINATION.pageSize);
+const total = ref(0);
+const tableData = ref<BaseFormData[]>([]);
 
-// 搜索数据
-const searchData = ref<FormData>({});
+const { permissions } = useCommonStore();
 
-// 表格数据
-const tableData = ref<TableData[]>([]);
+// 权限前缀
+const permissionPrefix = '/content/article';
 
-// 分页数据
-const pagination = reactive<PaginationData>({
-  total: 0,
-  page: 1,
-  pageSize: PAGE_SIZE,
-});
-
-onActivated(() => {
-  if (!isRefreshPage.value) {
-    getPage();
-  }
-});
-
-onActivated(() => {
-  if (isRefreshPage.value) {
-    getPage();
-    setRefreshPage(false);
-  }
-});
+// 权限
+const pagePermission = computed(() => checkPermission(permissionPrefix, permissions.value));
 
 /** 获取表格数据 */
 const getPage = async () => {
-  const newPagination = { ...pagination };
-  delete newPagination.total;
-  const query = { ...newPagination, ...searchData.value };
+  const params = { ...searchData.value, page: page.value, pageSize: pageSize.value };
+
   try {
     isLoading.value = true;
-    const { code, data } = await getArticlePage(query);
-    if (Number(code) !== 200) return;
-    const { items, total } = data;
-    tableData.value = items;
-    pagination.total = Number(total) || 0;
+    const { code, data } = await getArticlePage(params);
+    if (Number(code) === 200) {
+      const { items, total: resultTotal } = data;
+      total.value = resultTotal;
+      tableData.value = items;
+    }
   } finally {
     isLoading.value = false;
   }
 };
 
+// 首次进入自动加载接口数据
+onMounted(() => {
+  if (pagePermission.value.page) getPage();
+});
+
+// 每次进入时加载数据（keep-alive 激活）
+onActivated(() => {
+  // 如果正在刷新页面，不需要重复加载
+  if (publicStore.isRefreshPage) {
+    publicStore.setRefreshPage(false);
+    return;
+  }
+  if (pagePermission.value.page) {
+    getPage();
+  }
+});
+
+// 如果是新增或编辑成功重新加载页面
+watch(
+  () => publicStore.isRefreshPage,
+  (value) => {
+    if (value) {
+      publicStore.setRefreshPage(false);
+      getPage();
+    }
+  },
+);
+
 /**
-  * 搜索提交
-  * @param values - 表单返回数据
-  */
-const handleSearch = (values: FormData) => {
+ * 点击搜索
+ * @param values - 表单返回数据
+ */
+const onSearch = (values: BaseFormData) => {
+  page.value = 1;
   searchData.value = values;
-  pagination.page = 1;
   getPage();
 };
 
 /** 点击新增 */
 const onCreate = () => {
-  router.push('/content/article/option?type=create');
+  router.push('/content/article/create');
 };
 
 /**
-  * 点击编辑
-  * @param record - 当前行数据
-  */
-const onUpdate = async (record: FormData) => {
-  const { id } = record;
-  router.push(`/content/article/option?type=update&id=${id as string}`);
+ * 点击编辑
+ * @param id - 唯一值
+ */
+const onUpdate = (id: string) => {
+  router.push(`/content/article/update?id=${id}`);
 };
 
 /**
-  * 删除
-  * @param id - 唯一标识
-  */
-const handleDelete = async (id: string | number) => {
+ * 点击删除
+ * @param id - 唯一值
+ */
+const onDelete = async (id: string) => {
   try {
     isLoading.value = true;
-    const data = await deleteArticle(id as string);
-    if (data?.code === 200) {
-      message.success(data?.message || '删除成功');
+    const { code, message: messageInfo } = await deleteArticle(id);
+    if (Number(code) === 200) {
+      message.success(messageInfo || t('public.successfullyDeleted'));
       getPage();
     }
   } finally {
@@ -158,13 +131,61 @@ const handleDelete = async (id: string | number) => {
 };
 
 /**
-  * 分页
-  * @param page - 当前页
-  * @param pageSize - 分页总数
-  */
-const handlePagination = (page: number, pageSize: number) => {
-  pagination.page = page;
-  pagination.pageSize = pageSize;
+ * 处理分页
+ * @param currentPage - 当前页数
+ * @param currentPageSize - 每页条数
+ */
+const onChangePagination = (currentPage: number, currentPageSize: number) => {
+  page.value = currentPage;
+  pageSize.value = currentPageSize;
   getPage();
 };
+
+// 列配置
+const columns = computed(() => tableColumns(t));
 </script>
+
+<template>
+  <BaseContent :is-permission="pagePermission.page">
+    <BaseCard>
+      <BaseSearch
+        :list="searchList(t)"
+        :data="searchData"
+        :is-loading="isLoading"
+        @handle-finish="onSearch"
+      />
+    </BaseCard>
+
+    <BaseCard class="mt-10px">
+      <BaseTable
+        :is-loading="isLoading"
+        :is-create="pagePermission.create"
+        :columns="columns"
+        :data-source="tableData"
+        @get-page="getPage"
+        @on-create="onCreate"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.dataIndex === 'operate'">
+            <div class="flex flex-wrap gap-5px">
+              <UpdateBtn v-if="pagePermission.update" @click="onUpdate((record as RowData).id)" />
+              <DeleteBtn
+                v-if="pagePermission.delete"
+                :name="(record as RowData).title"
+                @handle-delete="onDelete((record as RowData).id)"
+              />
+            </div>
+          </template>
+        </template>
+      </BaseTable>
+
+      <BasePagination
+        :disabled="isLoading"
+        :current="page"
+        :page-size="pageSize"
+        :total="total"
+        @change="onChangePagination"
+      />
+    </BaseCard>
+  </BaseContent>
+</template>

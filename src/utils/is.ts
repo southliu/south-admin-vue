@@ -7,6 +7,14 @@ export function isFunction(val: unknown): boolean {
 }
 
 /**
+ * 是否是数字
+ * @param val - 参数
+ */
+export function isNumber(val: unknown): val is number {
+  return typeof val === 'number' && !Number.isNaN(val);
+}
+
+/**
  * 是否是URL
  * @param path - 路径
  */

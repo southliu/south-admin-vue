@@ -1,83 +1,80 @@
-<template>
-  <div
-    v-if="list.length === 0"
-    class="flex flex-col items-center pt-5 text-warm-gray-400"
-  >
-    <Icon class="text-40px" icon="mdi:archive-cancel-outline" />
-    <span class="mt-1">暂无搜索结构</span>
-  </div>
-
-  <template v-else>
-    <div class="mt-5">
-      <div
-        v-for="item in list"
-        :key="item.key"
-        class="
-          h-56px
-          mt-8px
-          px-14px
-          rounded-4px
-          cursor-pointer
-          flex
-          items-center
-          justify-between
-          shadow-md
-          border
-          border-light-500"
-        :class="{
-          'bg-blue-500': active === item.key,
-          'text-white': active === item.key
-        }"
-        @click="handleClick()"
-        @mouseenter="handleMouse(item.key)"
-     >
-        <div class="flex items-center">
-          <Icon class="text-lg mr-1" icon="gg:menu-boxed" />
-          <span v-if="item.nav?.length">
-            <span v-for="(nav, index) in item.nav" :key="index">
-              {{ nav }}{{ index !== item.nav.length - 1 ? " > " : "" }}
-            </span>
-          </span>
-          <span v-else>
-            {{ item.label }}
-          </span>
-        </div>
-        <Icon class="icon text-20px p-2px mr-5px" icon="ant-design:enter-outlined" />
-      </div>
-    </div>
-  </template>
-</template>
-
-<script lang="ts" setup>
+<script setup lang="ts">
 import type { SideMenu } from '#/public';
 import { Icon } from '@iconify/vue';
+import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
+import { getMenuByKey, getOpenMenuByRouter } from '@/menus/utils/helper';
+import { useCommonStore } from '@/hooks/useCommonStore';
+import { useMenuStore } from '@/stores/menu';
+import { useTabsStore } from '@/stores/tabs';
 
-interface DefineEmits {
-  (e: 'handleClick'): void;
-  (e: 'handleMouse', value: string): void;
-}
+defineOptions({ name: 'SearchResult' });
 
-const emit = defineEmits<DefineEmits>();
-
-interface DefineProps {
+const props = defineProps<{
   list: SideMenu[];
   active: string;
-}
+}>();
 
-withDefaults(defineProps<DefineProps>(), {});
+const emit = defineEmits<{
+  (e: 'cancel'): void;
+  (e: 'changActive', value: string): void;
+}>();
+
+const { t } = useI18n();
+const router = useRouter();
+const { permissions, menuList } = useCommonStore();
+const menuStore = useMenuStore();
+const tabsStore = useTabsStore();
 
 /**
- * 处理鼠标经过
- * @param item - 当前值
+ * 点击搜索项
+ * @param item - 点击项
  */
-const handleMouse = (item: string) => {
-  emit('handleMouse', item);
-};
+const onClick = (item: SideMenu) => {
+  router.push(item.key);
 
-/**
- * 鼠标点击
- */
-const handleClick = () => {
-  emit('handleClick');
+  // 添加标签
+  const newTab = getMenuByKey({ menus: menuList.value, permissions: permissions.value, key: item.key });
+  if (newTab) tabsStore.addTabs({ ...newTab, nav: newTab.nav.map((nav) => ({ ...nav })) });
+  tabsStore.setActiveKey(item.key);
+
+  // 处理菜单展开
+  const openKeys = getOpenMenuByRouter(item.key);
+  menuStore.setOpenKeys(openKeys);
+
+  emit('cancel');
 };
 </script>
+
+<template>
+  <div v-if="list?.length" class="mt-10px max-h-300px overflow-auto">
+    <div
+      v-for="item in list"
+      :key="item.key"
+      :class="`
+        flex
+        items-center
+        justify-between
+        box-border
+        w-full
+        px-10px
+        py-5px
+        cursor-pointer
+        ${active === item.key ? 'bg-#f5f5f5' : ''}
+      `"
+      @click="onClick(item)"
+      @mouseenter="emit('changActive', item.key)"
+    >
+      <span class="flex items-center">
+        <Icon v-if="item.icon" :icon="String(item.icon)" class="mr-8px text-lg" />
+        {{ item.label }}
+      </span>
+
+      <Icon v-if="active === item.key" class="text-lg" icon="ant-design:enter-outlined" />
+    </div>
+  </div>
+
+  <div v-else class="flex justify-center py-30px font-bold text-18px">
+    {{ t('public.notSearchContent') }}
+  </div>
+</template>

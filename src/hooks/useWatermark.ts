@@ -13,25 +13,17 @@ interface Option {
  */
 export function useWatermark() {
   /**
-   * 水印
-   * @param options - 操作值
+   * 添加水印
+   * @param options - 水印参数
    */
   const Watermark = (options: Option) => {
-    const {
-      content,
-      height,
-      width,
-      rotate,
-      color,
-      fontSize,
-      opacity
-    } = options;
+    const { content, height, width, rotate, color, fontSize, opacity } = options;
 
     // 判断水印是否存在，如果存在，那么不执行
     if (document.getElementById('south_watermark') !== null) {
       return;
     }
-    const TpLine = Math.floor(document.body.clientWidth / width) * 2; // 一行显示几列
+    const TpLine = Math.floor(document.body?.clientWidth / width) * 2; // 一行显示几列
     let StrLine = '';
     for (let i = 0; i < TpLine; i++) {
       const style = `
@@ -53,7 +45,7 @@ export function useWatermark() {
     const DivLine = document.createElement('div');
     DivLine.innerHTML = StrLine;
 
-    const TpColumn = (Math.floor(document.body.clientHeight / height) * 2) || 4; // 一列显示几行
+    const TpColumn = Math.floor(document.body.clientHeight / height) * 2 || 4; // 一列显示几行
 
     let StrColumn = '';
     for (let i = 0; i < TpColumn; i++) {
@@ -61,28 +53,25 @@ export function useWatermark() {
     }
     const DivLayer = document.createElement('div');
     DivLayer.innerHTML = StrColumn;
-    DivLayer.id = 'south_watermark'; // 给水印盒子添加类名
+    DivLayer.id = 'south_watermark';
     DivLayer.style.position = 'fixed';
-    DivLayer.style.top = '0px'; // 整体水印距离顶部距离
-    DivLayer.style.left = '-100px'; // 改变整体水印的left值
-    DivLayer.style.zIndex = '999999'; // 水印页面层级
+    DivLayer.style.top = '0px';
+    DivLayer.style.left = '-100px';
+    DivLayer.style.zIndex = '999999';
     DivLayer.style.pointerEvents = 'none';
     DivLayer.style.userSelect = 'none';
 
-    document.body.appendChild(DivLayer); // 到页面中
+    document.body.appendChild(DivLayer);
   };
 
   /** 删除水印 */
   const RemoveWatermark = () => {
-    // 判断水印是否存在，如果存在，那么执行
-    if (document.getElementById('south_watermark') === null) {
-      return;
-    } 
-    if (document.getElementById('south_watermark') !== null) {
-      const element = document.getElementById('south_watermark');
-      document.body.removeChild(element as HTMLElement);
+    // 判断水印是否存在，如果存在，则执行
+    const element = document.getElementById('south_watermark');
+    if (element) {
+      document.body.removeChild(element);
     }
   };
 
-  return [Watermark, RemoveWatermark] as const;
+  return { Watermark, RemoveWatermark };
 }

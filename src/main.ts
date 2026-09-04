@@ -1,25 +1,37 @@
-import { createApp } from 'vue';
-import pinia from './stores';
-import { router } from './router';
-import { routerIntercept } from './router/utils/intercept';
-import Element from './App.vue';
-
-// 样式
-import 'virtual:uno.css';
-import 'nprogress/nprogress.css';
-import '@/assets/css/antd.less';
 import '@/assets/css/public.less';
+import '@/assets/fonts/font.less';
+import 'uno.css';
+import 'nprogress/nprogress.css';
 import '@/assets/css/scrollbar.less';
 import '@/assets/css/theme-color.less';
-import 'ant-design-vue/dist/reset.css';
+import '@/utils/icons';
+import i18n from '@/locales/config';
+import '@/assets/css/antd.less';
+import dayjs from 'dayjs';
+import 'dayjs/locale/zh-cn';
+import { createApp } from 'vue';
+import App from './App.vue';
+import router from './router';
+import { routerIntercept } from './router/utils/intercept';
+import { store } from './stores';
 
-const app = createApp(Element);
-app
-  .use(pinia)
-  .use(router);
+dayjs.locale('zh-cn');
+
+const app = createApp(App);
+
+app.use(store);
+app.use(i18n);
+app.use(router);
+
+// 挂载后注册路由拦截器
+routerIntercept(router);
 
 router.isReady().then(() => {
-  // 路由拦截处理
-  routerIntercept(router);
   app.mount('#app');
+
+  // 隐藏首屏loading
+  const first = document.getElementById('first');
+  if (first) {
+    first.style.display = 'none';
+  }
 });

@@ -1,0 +1,29 @@
+import type { SelectProps, TreeSelectProps } from 'ant-design-vue';
+import type { ServerResult } from '@/servers/request';
+
+export type ApiFn = (params?: object | unknown[]) => Promise<ServerResult<unknown>>;
+
+// api参数
+interface ApiParam {
+  api?: ApiFn;
+  params?: object | unknown[];
+  apiResultKey?: string;
+}
+
+// 带分页的api参数
+interface ApiPageParam extends Omit<ApiParam, 'params'> {
+  pageKey?: string;
+  pageSizeKey?: string;
+  queryKey?: string;
+  page?: number;
+  pageSize?: number;
+  params?: object & {
+    [key: string]: number;
+  };
+}
+
+export type ApiSelectProps = ApiParam & SelectProps;
+
+export type ApiTreeSelectProps = ApiParam & TreeSelectProps;
+
+export type ApiPageSelectProps = ApiPageParam & SelectProps;

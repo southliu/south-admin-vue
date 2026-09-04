@@ -1,158 +1,133 @@
-<template>
-  <header
-    class="h-40px flex items-center justify-between px-6 py-6px box-border transition-all"
-  >
-    <div class="flex items-center">
-      <div class="flex items-center text-lg cursor-pointer" @click="toggleCollapsed">
-        <MenuUnfoldOutlined v-if="isCollapsed" />
-        <MenuFoldOutlined v-else />
-      </div>
-
-      <!-- <Nav
-        className="ml-15px"
-        :list="nav"
-      /> -->
-
-      <TopMenu />
-    </div>
-
-    <div class="flex items-center">
-      <Github />
-      <GlobalSearch />
-      <Fullscreen />
-      <Theme />
-      <Dropdown class="min-w-50px">
-        <div class="ant-dropdown-link flex items-center cursor-pointer" @click.prevent>
-          <img
-            class="rounded-1/2 overflow-hidden object-cover bg-light-500"
-            :src="Avatar"
-            :width="27"
-            :height="27"
-            alt="头像"
-          >
-          <span class="ml-2 text-15px min-w-50px truncate">{{ username || 'south-admin' }}</span>
-        </div>
-        <template #overlay>
-          <Menu @click="onClickDropdown">
-            <MenuItem :key="Dropdowns.update">
-              <FormOutlined class="mr-1" />
-              <span>修改密码</span>
-            </MenuItem>
-            <MenuItem :key="Dropdowns.logout">
-              <LogoutOutlined class="mr-1" />
-              <span>退出登录</span>
-            </MenuItem>
-          </Menu>
-        </template>
-      </Dropdown>
-    </div>
-  </header>
-</template>
-
-<script lang="ts" setup>
-import { createVNode, nextTick } from 'vue';
-import { useRouter } from 'vue-router';
-import { useToken } from '@/hooks/useToken';
-import { useTabStore } from '@/stores/tabs';
-import { useUserStore } from '@/stores/user';
-// import { storeToRefs } from 'pinia';
-import { Modal } from 'ant-design-vue';
-import {
-  Menu,
-  MenuItem,
-  Dropdown,
-  MenuProps
-} from 'ant-design-vue';
-import {
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
-  LogoutOutlined,
-  FormOutlined,
-  ExclamationCircleOutlined
-} from '@ant-design/icons-vue';
+<script setup lang="ts">
+import type { MenuProps } from 'ant-design-vue';
+import { ExclamationCircleOutlined, FormOutlined, LogoutOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons-vue';
+import { Dropdown } from 'ant-design-vue';
+import { useI18n } from 'vue-i18n';
+import { h, useTemplateRef } from 'vue';
+import Avatar from '@/assets/images/avatar.png';
+import styles from '../index.module.less';
 import Fullscreen from '@/components/Fullscreen/index.vue';
 import GlobalSearch from '@/components/GlobalSearch/index.vue';
-import Theme from '@/components/Theme/index.vue';
 import Github from '@/components/Github/index.vue';
-import Avatar from '@/assets/images/avatar.png';
-import TopMenu from './TopMenu.vue';
-// import Nav from './Nav.vue';
+import I18n from '@/components/I18n/index.vue';
+import Theme from '@/components/Theme/index.vue';
+import UpdatePassword from './UpdatePassword.vue';
+import Nav from './Nav.vue';
+import { useCommonStore } from '@/hooks/useCommonStore';
+import { useLogout } from '@/hooks/useLogout';
+import { modal } from '@/utils/message';
 
-// 下拉菜单枚举
-enum Dropdowns {
-  update,
-  logout
-}
+defineOptions({ name: 'LayoutHeader' });
 
-interface DefineEmits {
-  (e: 'toggleCollapsed'): void;
-  (e: 'onUpdatePassword'): void;
-}
+type MenuKey = 'password' | 'logout';
 
-const emit = defineEmits<DefineEmits>();
+const { t } = useI18n();
+const { handleLogout } = useLogout();
+const { isCollapsed, isMaximize, username, name, nav, menuStore } = useCommonStore();
 
-interface DefineProps {
-  isCollapsed: boolean;
-  username: string;
-}
+// 修改密码弹窗
+const passwordRef = useTemplateRef<{ open: () => void }>('passwordRef');
 
-withDefaults(defineProps<DefineProps>(), {});
-
-const router = useRouter();
-const tabStore = useTabStore();
-const userStore = useUserStore();
-const { removeToken } = useToken();
-const { clearInfo } = userStore;
-const {
-  closeAllTab,
-  clearCacheRoutes,
-  setActiveKey
-} = tabStore;
-// const { nav } = storeToRefs(tabStore);
-
-/** 收缩菜单 */
-const toggleCollapsed = () => {
-  emit('toggleCollapsed');
-};
-
-/** 退出登录 */
-const handleLogout = () => {
-  Modal.confirm({
-    title: '温馨提示',
-    icon: createVNode(ExclamationCircleOutlined),
-    content: '是否确定退出系统?',
-    onOk() {
-      removeToken();
-      clearInfo();
-      closeAllTab();
-      clearCacheRoutes();
-      setActiveKey('');
-
-      nextTick(() => {
-        router.push('/login');
-      });
-    }
-  });
-};
+// 下拉菜单内容
+const items: MenuProps['items'] = [
+  {
+    key: 'password',
+    label: t('public.changePassword'),
+    icon: () => h(FormOutlined, { class: 'mr-1' }),
+  },
+  {
+    key: 'logout',
+    label: t('public.signOut'),
+    icon: () => h(LogoutOutlined, { class: 'mr-1' }),
+  },
+];
 
 /**
- * 点击下拉菜单
- * @param e - 菜单点击属性
+ * 点击菜单
+ * @param e - 菜单事件
  */
-const onClickDropdown: MenuProps['onClick'] = e => {
-  switch ((e as { key: Dropdowns }).key) {
-    // 修改密码
-    case Dropdowns.update:
-      emit('onUpdatePassword');
+const onClick: MenuProps['onClick'] = (e) => {
+  switch (e.key as MenuKey) {
+    case 'password':
+      passwordRef.value?.open();
       break;
 
-    // 退出登录
-    case Dropdowns.logout:
-      handleLogout();
+    case 'logout':
+      onLogout();
       break;
 
     default:
       break;
   }
 };
+
+/** 退出登录 */
+const onLogout = () => {
+  modal.confirm({
+    title: t('public.kindTips'),
+    icon: h(ExclamationCircleOutlined),
+    content: t('public.signOutMessage'),
+    onOk() {
+      handleLogout();
+    },
+  });
+};
 </script>
+
+<template>
+  <header
+    :class="`
+      border-bottom
+      flex
+      items-center
+      justify-between
+      px-6
+      py-6px
+      box-border
+      transition-all
+      ${styles['header-driver']}
+      ${isMaximize ? styles.none : ''}
+    `"
+  >
+    <div class="flex items-center">
+      <!-- 折叠按钮 -->
+      <div
+        class="cursor-pointer text-lg"
+        @click="menuStore.toggleCollapsed(!isCollapsed)"
+      >
+        <MenuUnfoldOutlined v-if="isCollapsed" />
+        <MenuFoldOutlined v-else />
+      </div>
+
+      <!-- 面包屑 -->
+      <Nav class="ml-15px" :list="nav" />
+    </div>
+
+    <!-- 右侧功能区 -->
+    <div class="flex items-center">
+      <Github />
+      <GlobalSearch />
+      <Fullscreen />
+      <I18n />
+      <Theme />
+
+      <!-- 头像下拉 -->
+      <Dropdown class="min-w-50px" :menu="{ items, onClick }">
+        <div class="ant-dropdown-link flex cursor-pointer items-center" @click.prevent>
+          <img
+            :src="Avatar"
+            width="27"
+            height="27"
+            alt="Avatar"
+            class="rounded-1/2 overflow-hidden object-cover bg-light-500"
+          />
+          <span class="ml-2 min-w-50px truncate text-15px">
+            {{ name || username || 'south-admin' }}
+          </span>
+        </div>
+      </Dropdown>
+    </div>
+  </header>
+
+  <UpdatePassword ref="passwordRef" />
+</template>

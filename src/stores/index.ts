@@ -1,5 +1,8 @@
-import { createPinia } from "pinia";
+import { createPinia } from 'pinia';
 
-const pinia = createPinia();
+export { useUserStore } from './user';
+export { useMenuStore } from './menu';
+export { usePublicStore } from './public';
+export { useTabsStore } from './tabs';
 
-export default pinia;
+export const store = createPinia();

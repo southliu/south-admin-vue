@@ -1,100 +1,48 @@
-<template>
-  <div class='
-    submit-bottom
-    theme-bg
-    bg-white
-    absolute
-    flex
-    left-0
-    right-0
-    bottom-0
-    py-5px
-    px-30px
-    box-border
-    b-t
-    b-#ececec
-    rounded-b-2
-    z-999
-  '>
-    <Button
-      type="primary"
-      class="mr-10px"
-      @click="handleSubmit"
-    >
-      提交
-    </Button>
-    <Button
-      v-if="isRefresh"
-      @click="handleRefresh"
-    >
-      重置
-    </Button>
-    <slot></slot>
-  </div>
-</template>
+<script setup lang="ts">
+import { Button } from 'ant-design-vue';
+import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 
-<script lang="ts" setup>
-import { useRoute, useRouter } from 'vue-router';
-import { Button, message } from 'ant-design-vue';
-import { useTabStore } from '@/stores/tabs';
-import { storeToRefs } from 'pinia';
-import { routeToKeepalive } from '@/router/utils/helper';
+defineOptions({ name: 'SubmitBottom' });
 
-interface DefineEmits {
-  (e: 'submit'): void;
-}
+const props = withDefaults(
+  defineProps<{
+    isLoading?: boolean;
+    backPath?: string;
+  }>(),
+  {
+    isLoading: false,
+  },
+);
 
-const emit = defineEmits<DefineEmits>();
+const emit = defineEmits<{
+  (e: 'handleConfirm'): void;
+}>();
 
-interface DefineProps {
-  isLoading?: boolean;
-  isRefresh?: boolean; // 是否显示重置
-}
-
-withDefaults(defineProps<DefineProps>(), {
-  isLoading: false,
-  isRefresh: true
-});
-
-const route = useRoute();
+const { t } = useI18n();
 const router = useRouter();
-const tabStore = useTabStore();
-const { addPrevPath } = tabStore;
-const { cacheRoutes, prevPath } = storeToRefs(tabStore);
 
-/**
- * 刷新当前页
- */
- const handleRefresh = () => {
-  // 缓存上一个路径地址
-  addPrevPath(route.fullPath);
-  
-  // 去除缓存路由中当前路由
-  const cacheRoute = routeToKeepalive(route.path);
-  cacheRoutes.value = cacheRoutes.value.filter(item => item !== cacheRoute);
-
-  // 调转空白页
-  router.push('/loading');
-
-  // 200毫秒调转回来
-  let timer: NodeJS.Timeout | null = setTimeout(() => {
-    clearTimeout(timer as NodeJS.Timeout);
-    timer = null;
-    router.push(prevPath.value);
-    message.success({ content: '重置成功', key: 'refresh' });
-  }, 200);
-};
-
-/** 点击提交 */
-const handleSubmit = () => {
-  emit('submit');
+/** 返回 */
+const onBack = () => {
+  if (props.backPath) {
+    router.push(props.backPath);
+  } else {
+    router.back();
+  }
 };
 </script>
 
-<style lang="less" scoped>
-.theme-dark {
-  .submit-bottom {
-    border-top-color: #414141 !important;
-  }
-}
-</style>
+<template>
+  <div
+    class="bg fixed bottom-0 left-0 right-0 z-999 box-border flex w-full justify-end px-30px py-5px shadow shadow-gray-500"
+  >
+    <slot />
+
+    <Button danger class="mr-10px" @click="onBack">
+      {{ t('public.back') }}
+    </Button>
+    <Button type="primary" :loading="isLoading" @click="emit('handleConfirm')">
+      {{ t('public.submit') }}
+    </Button>
+  </div>
+</template>

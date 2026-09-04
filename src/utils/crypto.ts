@@ -8,12 +8,17 @@ import md5 from 'crypto-js/md5';
 
 const secretKey = import.meta.env.VITE_SECRET_KEY as string;
 
+interface EncryptionProps {
+  value: string;
+  expire: number;
+}
+
 /**
  * 加密
  * @param data - 加密数据
  * @param secret - 加密密钥
  */
-export function encryption(data: unknown, secret = secretKey) {
+export function encryption(data: unknown | EncryptionProps, secret = secretKey) {
   const code = JSON.stringify(data);
   return encrypt(code, secret).toString();
 }

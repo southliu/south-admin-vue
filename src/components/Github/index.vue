@@ -1,21 +1,22 @@
-<template>
-  <Tooltip placement="bottom">
-    <template #title>Github</template>
-    <div @click="goGithub">
-      <Icon
-        class="flex items-center justify-center text-lg mr-10px cursor-pointer"
-        icon='mdi:github'
-      />
-    </div>
-  </Tooltip>
-</template>
-
-<script lang="ts" setup>
+<script setup lang="ts">
 import { Tooltip } from 'ant-design-vue';
 import { Icon } from '@iconify/vue';
 
-/** 跳转github */
+defineOptions({ name: 'Github' });
+
+/** 跳转Github */
 const goGithub = () => {
   window.open('https://github.com/southliu/vue-admin');
 };
 </script>
+
+<template>
+  <Tooltip title="Github">
+    <div @click="goGithub">
+      <Icon
+        class="mr-3 flex cursor-pointer items-center justify-center text-lg"
+        icon="mdi:github"
+      />
+    </div>
+  </Tooltip>
+</template>

@@ -1,227 +1,222 @@
-<template>
-  <div class="py-1 box-border transition-all overflow-hidden z-2">
-    <div
-      class="flex justify-center items-center px-5 py-2 cursor-pointer"
-      :class="{ 'justify-center': isCollapsed }"
-      @click="onClickLogo"
-    >
-      <img
-        class="object-contain"
-        :width="50"
-        :height="30"
-        :src="Logo"
-        alt="LOGO"
-      />
-      <span
-        class="text-white ml-3 text-xl font-bold truncate"
-        :class="{ 'hidden': isCollapsed }"
-      >
-        后台系统
-      </span>
-    </div>
-    <div class="menu-height overflow-y-auto">
-      <Menu
-        v-model:selectedKeys="selectedKeys"
-        :openKeys="(!isCollapsed && !isPhone) ? currentOpenKeys : undefined"
-        class="h-full z-1000"
-        mode="inline"
-        theme="dark"
-        :inlineCollapsed="isCollapsed"
-        @openChange="openChange"
-      >
-        <MenuChildren
-          :list="sideMenuList"
-          :handleClick="handleClick"
-        />
-      </Menu>
-    </div>
-
-    <div
-      v-if="isPhone && !isCollapsed"
-      class="cover fixed right-0 top-0 bottom-0 h-full bg-gray-500 bg-opacity-10 z-2"
-      @click="hiddenMenu"
-    />
-  </div>
-</template>
-
-<script lang="ts" setup>
+<script setup lang="ts">
 import type { SideMenu } from '#/public';
-import type { Key } from 'ant-design-vue/lib/_util/type';
-import { watch, onMounted, ref } from 'vue';
-import { useMenuStore } from '@/stores/menu';
-import { useUserStore } from '@/stores/user';
+import type { MenuProps } from 'ant-design-vue';
+import { Menu as AntMenu } from 'ant-design-vue';
+import { Icon } from '@iconify/vue';
+import { useI18n } from 'vue-i18n';
+import { computed, h, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Menu } from 'ant-design-vue';
-import { storeToRefs } from 'pinia';
-import { setTitle } from '@/utils/helper';
+import { isUrl } from '@/utils/is';
 import {
+  filterMenus,
   getFirstMenu,
-  getMenuName,
+  getMenuByKey,
   getOpenMenuByRouter,
-  splitPath
-} from '@/utils/menu';
-import MenuChildren from './MenuChildren.vue';
-import Logo from '@/assets/images/logo.png';
+  handleFilterMenus,
+  splitPath,
+} from '@/menus/utils/helper';
+import Logo from '@/assets/images/logo.svg';
+import { getTabTitle } from '../utils/helper';
+import { setTitle } from '@/utils/helper';
+import { useCommonStore } from '@/hooks/useCommonStore';
+import styles from '../index.module.less';
 
-interface DefineEmits {
-  (e: 'toggleCollapsed'): void;
-}
+defineOptions({ name: 'LayoutMenu' });
 
-const emit = defineEmits<DefineEmits>();
-
-interface DefineProps {
-  isCollapsed: boolean;
-}
-
-const props = withDefaults(defineProps<DefineProps>(), {});
-
+const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
-const menuStore = useMenuStore();
-const userStore = useUserStore();
-const { permissions } = storeToRefs(userStore);
-const {
-  isPhone,
-  openKeys,
-  selectedKeys,
-  sideMenuList
-} = storeToRefs(menuStore);
-const {
-  setOpenKeys,
-  setSelectedKeys
-} = menuStore;
-
-// 当前展开项，收缩模式不展开
-const currentOpenKeys = ref(openKeys.value);
-
-onMounted(() => {
-  handleMenuOpen();
-  handleSetTitle(sideMenuList.value, route.path);
-});
-
-watch(() => sideMenuList.value, () => {
-  handleMenuOpen();
-  handleSetTitle(sideMenuList.value, route.path);
-});
-
-// 监听路径
-watch(() => route.path, value => {
-  if (!value || value === '/loading') return;
-  handleMenuOpen();
-  handleSetTitle(sideMenuList.value, value);
-});
-
-// 监听展开
-watch(() => openKeys.value, openKeys => {
-  if (props.isCollapsed || isPhone.value) {
-    currentOpenKeys.value = [];
-  } else {
-    currentOpenKeys.value = openKeys;
-  }
-});
-
-/** 处理菜单展开 */
-const handleMenuOpen = () => {
-  if (permissions.value.length > 0 && sideMenuList.value?.length) {
-    // 展开菜单
-    const newOpenKey = getOpenMenuByRouter(route.path);
-    setOpenKeys(newOpenKey);
-    setSelectedKeys([route.path]);
-  }
-};
+const { isMaximize, isCollapsed, isPhone, openKeys, selectedKeys, permissions, menuList, menuStore, tabsStore } =
+  useCommonStore();
 
 /**
- * 设置浏览器标签
- * @param list - 菜单列表
- * @param path - 路径
+ * 转换菜单icon格式
  */
-const handleSetTitle = (list: SideMenu[], path: string) => {
-  const title = getMenuName(list, path);
-  if (title) setTitle(title);
+const filterMenuIcon = (menus: SideMenu[]): SideMenu[] => {
+  if (!menus?.length) return [];
+
+  return menus.map((item) => {
+    const newItem: SideMenu = { ...item };
+
+    if (item?.icon && typeof item.icon === 'string') {
+      newItem.icon = h(Icon, { icon: item.icon });
+    }
+
+    if (item?.children?.length) {
+      newItem.children = filterMenuIcon(item.children);
+    }
+
+    return newItem;
+  });
 };
 
-/**
- * 处理跳转
- * @param path - 路径
- */
-const goPath = (path: string) => {
-  router.push(path);
-};
+// 过滤菜单（权限 + 语言 + 图标）
+const filteredMenus = computed(() => {
+  if (!permissions.value.length || !menuList.value.length) return [];
+  const newMenus = filterMenus(menuList.value, permissions.value);
+  return filterMenuIcon(newMenus);
+});
 
-/** 点击logo */
-const onClickLogo = () => {
-  const firstMenu = getFirstMenu(sideMenuList.value, permissions.value);
-  goPath(firstMenu || '/');
-};
+// 菜单项（去除多余字段）
+const menuItems = computed<MenuProps['items']>(() => {
+  return handleFilterMenus(filteredMenus.value) as MenuProps['items'];
+});
+
+// 刷新页面根据路由选中对应的菜单
+watch(
+  () => route.path,
+  (path) => {
+    const newOpenKey = getOpenMenuByRouter(path);
+    menuStore.setOpenKeys(newOpenKey);
+    menuStore.setSelectedKeys(path);
+  },
+  { immediate: true },
+);
 
 /**
  * 对比当前展开目录是否是同一层级
- * @param arr - 当前展开目录
- * @param lastArr - 最后展开的目录
  */
 const diffOpenMenu = (arr: string[], lastArr: string[]) => {
-  let result = true;
-
-  for (let j = 0; j < arr.length; j++) {
-    if (arr[j] !== lastArr[j]) {
-      result = false;
-      break;
-    }
-  }
-
-  return result;
+  return arr.every((item, index) => item === lastArr[index]);
 };
 
 /**
- * 菜单展开事件
- * @param openKeys - 展开下标
+ * 展开/关闭回调
+ * @param keys - 展开的菜单项
  */
-const openChange = (openKeys: Key[]) => {
+const onOpenChange = (keys: (string | number)[]) => {
+  const list = keys.map(String);
   const newOpenKey: string[] = [];
-  let last = ''; // 最后一个目录结构
 
-  // 当目录有展开值
-  if (openKeys.length > 0) {
-    last = openKeys[openKeys.length - 1].toString();
+  if (list.length > 0) {
+    const last = list[list.length - 1];
     const lastArr: string[] = splitPath(last);
     newOpenKey.push(last);
 
     // 对比当前展开目录是否是同一层级
-    for (let i = openKeys.length - 2; i >= 0; i--) {
-      const arr = splitPath(openKeys[i].toString());
+    for (let i = list.length - 2; i >= 0; i--) {
+      const arr = splitPath(list[i]);
       const hasOpenKey = diffOpenMenu(arr, lastArr);
-      if (hasOpenKey) newOpenKey.unshift(openKeys[i].toString());
+      if (hasOpenKey) {
+        newOpenKey.unshift(list[i]);
+      }
     }
   }
 
-  setOpenKeys(newOpenKey);
+  menuStore.setOpenKeys(newOpenKey);
+};
+
+/**
+ * 隐藏菜单（手机端）
+ */
+const hiddenMenu = () => {
+  menuStore.toggleCollapsed(true);
 };
 
 /**
  * 点击菜单
- * @param key - 唯一值
+ * @param info - 菜单信息
  */
-const handleClick = (key: string) => {
-  goPath(key);
-  
-  // 手机端点击隐藏菜单
-  if (isPhone.value) emit('toggleCollapsed');
+const onClickMenu: MenuProps['onClick'] = (info) => {
+  const key = String(info.key);
+
+  // 如果点击的菜单是当前菜单则退出
+  if (key === route.path) return;
+
+  // 手机端点击后隐藏菜单
+  if (isPhone.value) {
+    hiddenMenu();
+  }
+
+  // 如果是外链则跳转
+  if (isUrl(key)) {
+    window.open(key, '_blank');
+    return;
+  }
+
+  // 立即更新菜单状态
+  menuStore.setSelectedKeys(key);
+
+  // 标签栏操作
+  tabsStore.setActiveKey(key);
+  const newItems = getMenuByKey({ menus: menuList.value, permissions: permissions.value, key });
+
+  if (newItems?.key) {
+    tabsStore.setActiveKey(newItems.key);
+    tabsStore.setNav(newItems.nav);
+    tabsStore.addTabs({ ...newItems, nav: newItems.nav.map((item) => ({ ...item })) });
+  } else {
+    tabsStore.setActiveKey(key);
+  }
+
+  // 刷新标题
+  const title = getTabTitle(tabsStore.tabs, key);
+  if (title) setTitle(t, title);
+
+  router.push(key);
 };
 
-/** 隐藏菜单 */
-const hiddenMenu = () => {
-  emit('toggleCollapsed');
+/** 点击logo */
+const onClickLogo = () => {
+  const firstMenu = getFirstMenu(filteredMenus.value, permissions.value);
+  if (firstMenu) router.push(firstMenu);
+  if (isPhone.value) {
+    hiddenMenu();
+  }
 };
 </script>
 
-<style lang="less" scoped>
-@import '@/assets/css/default.less';
+<template>
+  <!-- 侧边菜单 -->
+  <div
+    :class="`
+      transition-all
+      overflow-auto
+      z-2
+      ${styles.menu}
+      ${isCollapsed ? styles['menu-close'] : ''}
+      ${isMaximize || (isPhone && isCollapsed) ? styles['menu-none'] : ''}
+      ${isPhone ? '!z-1002' : ''}
+    `"
+  >
+    <!-- logo -->
+    <div
+      :class="`
+        text-white
+        flex
+        content-center
+        px-5
+        py-2
+        cursor-pointer
+        ${isCollapsed ? 'justify-center' : ''}
+      `"
+      @click="onClickLogo"
+    >
+      <img :src="Logo" width="30" height="30" class="object-contain" alt="logo" />
+      <span :class="`text-white ml-3 text-xl font-bold truncate ${isCollapsed ? 'hidden' : ''}`">
+        {{ t('public.currentName') }}
+      </span>
+    </div>
 
-.menu-height {
-  height: calc(100% - 50px);
-}
+    <AntMenu
+      id="layout-menu"
+      class="z-1000"
+      :selected-keys="[selectedKeys]"
+      :open-keys="openKeys"
+      mode="inline"
+      theme="dark"
+      :force-sub-menu-render="true"
+      :inline-collapsed="isPhone ? false : isCollapsed"
+      :items="menuItems"
+      @click="onClickMenu"
+      @open-change="onOpenChange"
+    />
+  </div>
 
-.cover {
-  left: @layoutLeft;
-}
-</style>@/menus/utils/menu
+  <!-- 手机端遮罩 -->
+  <div
+    v-if="isPhone && !isCollapsed"
+    class="fixed z-1001 h-full w-full bg-gray-500 bg-opacity-10"
+    @click="hiddenMenu"
+  />
+</template>

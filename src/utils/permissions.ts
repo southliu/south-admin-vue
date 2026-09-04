@@ -1,32 +1,51 @@
-import type { PermissionsData } from "@/pages/login/model";
-import { useUserStore } from "@/stores/user";
-import { storeToRefs } from "pinia";
+import type { PagePermission } from '#/public';
 
 /**
- * 授权参数转字符串数组
- * @param permissions - 授权值
+ * 检测页面权限（按钮级）
+ * @param value - 页面权限前缀，如 /system/user
+ * @param permissions - 权限列表
  */
-export const permissionsToArray = (permissions: PermissionsData[]): string[] => {
-  const res: string[] = [];
-  for (let i = 0; i < permissions.length; i++) {
-    const { id, operation } = permissions[i];
-    res.push(`/${id}`);
-    for (let y = 0; y < operation.length; y++) {
-      res.push(`/${id}/${operation[y]}`);
-    }
+export const checkPermission = (value: string, permissions: string[]): PagePermission => {
+  const result: PagePermission = {};
+
+  // 页面权限
+  if (permissions.includes(`${value}/index`) || permissions.includes(`${value}`)) {
+    result.page = true;
   }
-  return res;
+
+  // 新增权限
+  if (permissions.includes(`${value}/create`)) {
+    result.create = true;
+  }
+
+  // 编辑权限
+  if (permissions.includes(`${value}/update`)) {
+    result.update = true;
+  }
+
+  // 删除权限
+  if (permissions.includes(`${value}/delete`)) {
+    result.delete = true;
+  }
+
+  // 详情权限
+  if (permissions.includes(`${value}/detail`)) {
+    result.detail = true;
+  }
+
+  // 导出权限
+  if (permissions.includes(`${value}/export`)) {
+    result.export = true;
+  }
+
+  return result;
 };
 
 /**
- * 检测是否有权限
- * @param value - 检测值
- * @param permissions - 权限
+ * 是否拥有某个权限
+ * @param value - 权限值
+ * @param permissions - 权限列表
  */
-export const checkPermission = (value: string): boolean => {
-  const userStore = useUserStore();
-  const { permissions } = storeToRefs(userStore);
-
-  if (!permissions || permissions.value?.length === 0) return false;
-  return permissions.value?.includes(value);
+export const hasPermission = (value: string, permissions: string[]): boolean => {
+  return permissions.includes(value);
 };

@@ -1,32 +1,33 @@
-import { message } from 'ant-design-vue';
+import type { CreateRequestOptions, RequestCancel } from './types';
+import { message } from '@/utils/message';
 import { getLocalInfo, removeLocalInfo } from '@/utils/local';
-import { TOKEN } from '@/utils/config';
-import { router } from '@/router';
-import { useUserStore } from '@/stores/user';
 import axios from 'axios';
 import AxiosRequest from './request';
 
-// 生成环境所用的接口
-const prefixUrl = import.meta.env.VITE_BASE_URL as string;
-const baseURL = process.env.NODE_ENV !== 'development' ? prefixUrl : '/api';
+export type { ServerResult } from './types';
 
-// 请求配置
-export const request = creteRequest(baseURL);
+/**
+ * 权限过期提示在 localStorage 中的存储 key
+ * 请求拦截器在整页跳转前写入，登录页挂载后读取并清除
+ */
+const LOGIN_EXPIRED_MSG = 'login:expiredMsg';
 
 /**
  * 创建请求
  * @param url - 链接地址
+ * @param tokenKey - 存token的key值
+ * @param options - 扩展选项（onAuthExpired 权限过期回调，由应用层注入）
  */
-function creteRequest(url: string) {
+function creteRequest(url: string, tokenKey: string, options?: CreateRequestOptions) {
   return new AxiosRequest({
     baseURL: url,
     timeout: 180 * 1000,
     interceptors: {
       // 接口请求拦截
       requestInterceptors(res) {
-        const token = getLocalInfo(TOKEN) || '';
-        if (res?.headers && token) {
-          res.headers.Authorization = `${token}`;
+        const tokenLocal = getLocalInfo(tokenKey) || '';
+        if (res?.headers && tokenLocal) {
+          res.headers.Authorization = `Bearer ${tokenLocal}`;
         }
         return res;
       },
@@ -38,70 +39,74 @@ function creteRequest(url: string) {
       // 接口响应拦截
       responseInterceptors(res) {
         const { data } = res;
-        // 权限不足
-        if (data?.code === 401 && !location.href?.includes('/login?state=401')) {
-          removeLocalInfo(TOKEN);
-          const { setPermissions } = useUserStore();
-          setPermissions([]);
-          router.push('/login?state=401');
-          handleError(data?.message || '权限不足，请重新登录！');
+        // 权限过期
+        if (data?.code === 401) {
+          const currentToken = getLocalInfo(tokenKey) || '';
+          const requestToken = String(res.config.headers.get('Authorization') || '').replace(
+            'Bearer ',
+            '',
+          );
+          // 请求发出后 token 已被替换（其它登录），跳过处理
+          if (currentToken && requestToken !== currentToken) {
+            return res;
+          }
+
+          const lang = localStorage.getItem('lang');
+          const enMsg = 'Insufficient permissions, please log in again!';
+          const zhMsg = '权限过期，请重新登录！';
+          const msg = lang === 'en' ? enMsg : zhMsg;
+          removeLocalInfo(tokenKey);
+          console.error('错误信息:', data?.message || msg);
+
+          localStorage.setItem(LOGIN_EXPIRED_MSG, msg);
+
+          if (options?.onAuthExpired) {
+            options.onAuthExpired();
+          } else {
+            const current = `${window.location.pathname}${window.location.search}`;
+            const redirect = current && current !== '/login' ? `?redirect=${current}` : '';
+            window.location.href = `/login${redirect}`;
+          }
           return res;
         }
-    
-        // 错误处理
+
+        // blob 响应（文件下载）跳过业务 code 校验，交由调用方处理
+        if (data instanceof Blob || res.config?.responseType === 'blob') {
+          return res;
+        }
+
+        // 错误处理（FastAPI HTTPException 返回 {detail} 无 message/code，故兜底 detail）
         if (data?.code !== 200) {
-          handleError(data?.message);
+          handleError(data?.message || data?.detail);
           return res;
         }
-    
+
         return res;
       },
       responseInterceptorsCatch(err) {
-        // 权限不足
-        if ((err?.response?.status === 401 || err.response?.data?.code === 401) && !location.href?.includes('/login')) {
-          removeLocalInfo(TOKEN);
-          const { setPermissions } = useUserStore();
-          setPermissions([]);
-          router.push('/login?state=401');
-          handleError(err.response?.data?.message || '权限不足，请重新登录！');
-          return err;
-        }
-
         // 取消重复请求则不报错
-        if(axios.isCancel(err)) {
+        if (axios.isCancel(err)) {
           err.data = err.data || {};
           return err;
         }
 
-        handleError('服务器错误！');
+        handleError((err as RequestCancel)?.response?.data?.message || '服务器错误！');
         return err;
-      }
-    }
+      },
+    },
   });
 }
 
 /**
  * 异常处理
  * @param error - 错误信息
- * @param content - 自定义内容
  */
-const handleError = (error: string, content?: string) => {
+const handleError = (error: string) => {
   console.error('错误信息:', error);
   message.error({
-    content: content || error || '服务器错误',
-    key: 'error'
+    content: error || '服务器错误',
+    key: 'error',
   });
 };
 
-/**
- * 取消请求
- * @param url - 链接
- */
-export const cancelRequest = (url: string | string[]) => {
-  return request.cancelRequest(url);
-};
-
-/** 取消全部请求 */
-export const cancelAllRequest = () => {
-  return request.cancelAllRequest();
-};
+export { creteRequest, LOGIN_EXPIRED_MSG };

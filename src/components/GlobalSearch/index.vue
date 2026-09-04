@@ -1,33 +1,29 @@
+<script setup lang="ts">
+import { Tooltip } from 'ant-design-vue';
+import { Icon } from '@iconify/vue';
+import { useI18n } from 'vue-i18n';
+import { ref } from 'vue';
+import SearchModal from './components/SearchModal.vue';
+
+defineOptions({ name: 'GlobalSearch' });
+
+const { t } = useI18n();
+const isOpen = ref(false);
+
+/** 切换显示 */
+const toggle = () => {
+  isOpen.value = !isOpen.value;
+};
+</script>
+
 <template>
-  <Tooltip placement="bottom">
-    <template #title>搜索</template>
+  <Tooltip :title="t('public.search')">
     <Icon
-      class="flex items-center justify-center text-lg mr-10px"
+      class="mr-3 flex cursor-pointer items-center justify-center text-lg"
       icon="uil-search"
       @click="toggle"
     />
   </Tooltip>
 
-  <SearchModal
-    v-if="isOpen"
-    :isOpen="isOpen"
-    @toggle="toggle"
-  />
+  <SearchModal v-model:open="isOpen" />
 </template>
-
-<script lang="ts" setup>
-/**
- * @description: 顶部全局搜索菜单组件
- */
-import { ref } from 'vue';
-import { Tooltip } from 'ant-design-vue';
-import SearchModal from './components/SearchModal.vue';
-import { Icon } from '@iconify/vue';
-
-const isOpen = ref(false);
-
-/** 切换搜索框显示状态 */
-const toggle = () => {
-  isOpen.value = !isOpen.value;
-};
-</script>

@@ -1,13 +1,13 @@
-import { request } from '@/servers/request';
+import { request } from '@/servers';
 
 enum API {
   COMMON_URL = '/authority/common',
 }
 
-interface ResultData {
+interface Result {
   id: string;
   name: string;
-  children?: ResultData[];
+  children?: Result[];
 }
 
 /**
@@ -15,8 +15,5 @@ interface ResultData {
  * @param data - 请求数据
  */
 export function getGames(data?: unknown) {
-  return request.get<ResultData[]>(
-    `${API.COMMON_URL}/games`,
-    { params: data }
-  );
+  return request.get<Result[]>(`${API.COMMON_URL}/games`, { params: data });
 }

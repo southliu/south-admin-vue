@@ -1,27 +1,26 @@
+<script setup lang="ts">
+import { Icon } from '@iconify/vue';
+import { useI18n } from 'vue-i18n';
+
+defineOptions({ name: 'SearchFooter' });
+
+const { t } = useI18n();
+</script>
+
 <template>
   <div class="flex items-center text-dark-50">
     <span class="mr-14px flex items-center">
-      <Icon class="icon text-20px p-2px mx-2px" icon="ant-design:enter-outlined" />
-      <span>确认</span>
+      <Icon class="mr-5px p-2px text-20px" icon="ant-design:enter-outlined" />
+      <span>{{ t('public.confirm') }}</span>
     </span>
     <span class="mr-14px flex items-center">
-      <Icon class="icon text-20px p-2px mx-2px" icon="mdi-arrow-up-thin" />
-      <Icon class="icon text-20px p-2px mx-2px" icon="mdi-arrow-down-thin" />
-      <span>切换</span>
+      <Icon class="mr-5px p-2px text-20px" icon="mdi-arrow-up-thin" />
+      <Icon class="mr-5px p-2px text-20px" icon="mdi-arrow-down-thin" />
+      <span>{{ t('public.switch') }}</span>
     </span>
     <span class="flex items-center">
-      <Icon class="icon text-20px p-2px mx-2px" icon="mdi:keyboard-esc" />
-      <span>关闭</span>
+      <Icon class="mr-5px p-2px text-20px" icon="mdi:keyboard-esc" />
+      <span>{{ t('public.close') }}</span>
     </span>
   </div>
 </template>
-
-<script lang="ts" setup>
-import { Icon } from '@iconify/vue';
-</script>
-
-<style lang="less" scoped>
-.icon {
-  box-shadow: inset 0 -2px #cdcde6, inset 0 0 1px 1px #fff, 0 1px 2px 1px #1e235a66;
-}
-</style>

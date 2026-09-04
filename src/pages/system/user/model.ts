@@ -1,130 +1,166 @@
-import type { FormList } from "#/form";
-import type { TableColumnsProps } from "#/public";
-import { FORM_REQUIRED } from "@/utils/config";
-import { OPEN_CLOSE } from "@/utils/constants";
-import { PHONE_RULE } from "@/utils/verify";
+import type { BaseFormList, BaseSearchList, ApiFn } from '#/form';
+import type { TableColumn } from '#/public';
+import type { Translate } from '@/utils/config';
+import { FORM_REQUIRED } from '@/utils/config';
+import { MENU_STATUS } from '@/utils/constants';
+import { getUserPage } from '@/servers/system/user';
+import { getRoleList } from '@/servers/system/role';
 
-// 权限前缀
-const permissionPrefix = '/authority/user';
+// 展开演示字段（对齐 React 版，用于搜索区展开/收缩效果）
+const otherSearch: BaseSearchList[] = [];
 
-// 权限
-export const pagePermission = {
-  page: `${permissionPrefix}/index`,
-  create: `${permissionPrefix}/create`,
-  update: `${permissionPrefix}/update`,
-  delete: `${permissionPrefix}/delete`,
-  permission: `${permissionPrefix}/authority`
-};
-
-// 搜索数据
-export const searchList: FormList[] = [
-  {
-    label: '年龄',
-    name: 'age',
-    component: 'InputNumber'
-  },
-  {
-    label: '名字',
-    name: 'keyword',
-    component: 'Input'
-  }
-];
-
-// 表格数据
-export const tableColumns: TableColumnsProps[] = [
-  {
-    title: 'ID',
-    dataIndex: 'id'
-  },
-  {
-    title: '用户名',
-    dataIndex: 'username'
-  },
-  {
-    title: '姓名',
-    dataIndex: 'real_name'
-  },
-  {
-    title: '角色',
-    dataIndex: 'roles_name'
-  },
-  {
-    title: '手机号',
-    dataIndex: 'phone'
-  },
-  {
-    title: '邮箱',
-    dataIndex: 'email'
-  },
-  {
-    title: '状态',
-    dataIndex: 'status',
-  },
-  {
-    title: '操作',
-    dataIndex: 'operate',
-    width: 160,
-    ellipsis: false,
-  },
-];
-
-// 新增数据
-export const createList: FormList[] = [
-  {
-    label: '嵌套数据',
-    name: ['user', 'name', 'test'],
-    rules: FORM_REQUIRED,
+for (let i = 0; i < 32; i++) {
+  otherSearch.push({
+    label: `名称${i + 1}`,
+    name: `label${i + 1}`,
     component: 'Input',
     componentProps: {
-      maxlength: 32
-    }
+      maxLength: 200,
+    },
+  });
+}
+
+// 搜索数据
+export const searchList = (t: Translate): BaseSearchList[] => [
+  {
+    label: t('login.username'),
+    name: 'username',
+    component: 'ApiPageSelect',
+    componentProps: {
+      api: getUserPage as ApiFn,
+      apiResultKey: 'items',
+      fieldNames: { label: 'username', value: 'username' },
+      params: {
+        page: 1,
+        pageSize: 10,
+      },
+    },
   },
   {
-    label: '用户名',
+    label: t('system.email'),
+    name: 'email',
+    component: 'Input',
+  },
+  {
+    label: t('system.phone'),
+    name: 'phone',
+    component: 'Input',
+  },
+  ...otherSearch,
+];
+
+/**
+ * 表格数据
+ */
+export const tableColumns = (t: Translate): TableColumn[] => {
+  return [
+    {
+      title: 'ID',
+      dataIndex: 'id',
+      width: 80,
+      fixed: 'left',
+    },
+    {
+      title: t('login.username'),
+      dataIndex: 'username',
+      width: 100,
+      fixed: 'left',
+    },
+    {
+      title: t('public.name'),
+      dataIndex: 'name',
+      width: 100,
+    },
+    {
+      title: t('system.state'),
+      dataIndex: 'status',
+      width: 80,
+      enum: MENU_STATUS(t),
+    },
+    {
+      title: t('system.role'),
+      dataIndex: 'rolesName',
+      width: 200,
+    },
+    {
+      title: t('system.phone'),
+      dataIndex: 'phone',
+      width: 150,
+    },
+    {
+      title: t('system.email'),
+      dataIndex: 'email',
+      width: 200,
+    },
+    {
+      title: 'URL',
+      dataIndex: 'url',
+      width: 200,
+    },
+    {
+      title: t('public.operate'),
+      dataIndex: 'operate',
+      width: 240,
+      fixed: 'right',
+    },
+  ];
+};
+
+/**
+ * 新增数据
+ * @param t - 翻译函数
+ * @param isCreate - 是否新增（编辑时隐藏密码）
+ */
+export const createList = (t: Translate, isCreate: boolean): BaseFormList[] => [
+  {
+    label: t('login.username'),
     name: 'username',
     rules: FORM_REQUIRED,
     component: 'Input',
-    componentProps: {
-      maxlength: 32
-    }
   },
   {
-    label: '姓名',
-    name: 'real_name',
+    label: t('login.password'),
+    name: 'password',
+    hidden: !isCreate,
+    rules: isCreate ? FORM_REQUIRED : undefined,
+    component: 'InputPassword',
+  },
+  {
+    label: t('public.name'),
+    name: 'name',
     rules: FORM_REQUIRED,
     component: 'Input',
-    componentProps: {
-      maxlength: 32
-    }
   },
   {
-    label: '角色',
-    name: 'roles_name',
+    label: t('system.role'),
+    name: 'roleIds',
     rules: FORM_REQUIRED,
-    component: 'Input',
+    component: 'ApiSelect',
     componentProps: {
-      maxlength: 32
-    }
+      mode: 'multiple',
+      api: getRoleList,
+      fieldNames: { label: 'name', value: 'id' },
+    },
   },
   {
-    label: '电话',
-    name: 'phone',
-    rules: [
-      { required: true },
-      PHONE_RULE
-    ],
-    component: 'Input',
-    componentProps: {
-      maxlength: 20
-    }
-  },
-  {
-    label: '状态',
+    label: t('system.state'),
     name: 'status',
     rules: FORM_REQUIRED,
     component: 'Select',
     componentProps: {
-      options: OPEN_CLOSE
-    }
-  }
+      options: MENU_STATUS(t),
+    },
+  },
+  {
+    label: t('system.phone'),
+    name: 'phone',
+    rules: [{ pattern: /^1[3456789]\d{9}$/, message: t('login.phoneNumberError') }],
+    component: 'Input',
+  },
+  {
+    label: t('system.email'),
+    name: 'email',
+    rules: [{ type: 'email' }],
+    component: 'Input',
+  },
 ];

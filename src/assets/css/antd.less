@@ -1,67 +1,91 @@
-.ant-tabs-tab {
-  .ant-dropdown-trigger {
-    border-radius: 8px 8px 0 0;
+/* 斑马线:开始 */
+.theme-primary {
+  .zebra {
+    .ant-table-row:nth-child(2n),
+    .ant-table-row:nth-child(2n) > .ant-table-cell {
+      background-color: #fcfcfc;
+    }
   }
 }
 
-.ant-tabs-tab+.ant-tabs-tab {
-  margin-left: 2px !important;
+/* 斑马线:结束 */
+
+/* 边框:开始 */
+.bordered {
+  .ant-table-tbody > tr > td {
+    border-right: 1px solid #f0f0f0;
+  }
 }
 
-.ant-tree-select-dropdown .ant-select-tree .ant-select-tree-treenode {
+/* 边框:结束 */
+
+/* 主题:开始 */
+.left-divide-tab {
+  border-left: 1px solid #d9d9d9;
+}
+
+.theme-dark {
+  .border-bottom {
+    border-bottom: 1px solid #383838 !important;
+  }
+
+  .bordered {
+    .ant-table-tbody > tr > td {
+      border-right: 1px solid #3f3f3f;
+    }
+  }
+
+  .left-divide-tab {
+    border-left: 1px solid #383838 !important;
+  }
+}
+
+/* 主题:结束 */
+
+/* 表单:开始 */
+.ant-form-inline .ant-form-item {
+  margin-right: 10px !important;
+}
+
+/* 表单:结束 */
+
+/* 菜单:开始 */
+#layout-menu .ant-menu-item:hover,
+#layout-menu .ant-menu-submenu:hover {
+  .ant-menu-item-icon {
+    font-size: 16px;
+  }
+}
+
+/* 菜单:结束 */
+
+/* 搜索:开始 */
+#searches .ant-input-number {
   width: 100%;
-  padding-left: 10px;
 }
 
-.ant-modal-close-x {
-  margin-right: 50px;
+/* 搜索:结束 */
+
+/* 面包屑:开始 */
+.breadcrumb-separator {
+  color: rgba(0, 0, 0, 0.45);
 }
 
-.ant-modal .ant-modal-close:hover {
-  background-color: transparent !important;
+.theme-dark {
+  .breadcrumb-separator {
+    color: rgba(255, 255, 255, 0.45) !important;
+  }
 }
 
-.ant-tabs-dropdown .ant-tabs-dropdown-menu-item >span {
-  display: flex;
-  align-items: center;
+/* 面包屑:结束 */
+
+/* 表格:开始 */
+.ant-table-cell {
+  overflow: hidden;
 }
 
-.ant-pagination-item {
-  background-color: #f4f4f5 !important;
-  margin-right: 7px !important;
+.virtualTable {
+  overflow: auto;
 }
 
-.ant-pagination-item-active {
-  background-color: #0960bd!important;
-}
-
-.ant-pagination-item-active a {
-  color: #fff !important;
-}
-
-.ant-pagination-prev {
-  margin-right: 7px !important;
-  background-color: #f4f4f5 !important;
-}
-
-.ant-pagination-next {
-  margin-right: 7px !important;
-  background-color: #f4f4f5 !important;
-}
-
-.ant-table-wrapper .ant-table-pagination.ant-pagination {
-  margin-bottom: 0;
-}
-
-.ant-pagination.ant-pagination-mini .ant-pagination-options {
-  display: flex;
-  align-items: center;
-}
-
-.ant-pagination.ant-pagination-mini .ant-pagination-options-size-changer {
-  max-width: 100px;
-}
-
-.ant-pagination.ant-pagination-mini .ant-pagination-options-quick-jumper {
-  min-width: 110px;
-}
+/* 表格:结束 */

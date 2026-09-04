@@ -1,93 +1,96 @@
+<script setup lang="ts">
+import type { IDomEditor, IEditorConfig } from '@wangeditor/editor';
+import '@wangeditor/editor/dist/css/style.css';
+import { Editor, Toolbar } from '@wangeditor/editor-for-vue';
+import { onBeforeUnmount, ref, shallowRef, watch } from 'vue';
+
+defineOptions({ name: 'WangEditor' });
+
+const props = withDefaults(
+  defineProps<{
+    modelValue?: string;
+    value?: string;
+    height?: number;
+    placeholder?: string;
+  }>(),
+  {
+    modelValue: '',
+    height: 300,
+    placeholder: '请输入内容...',
+  },
+);
+
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: string): void;
+  (e: 'change', value: string): void;
+}>();
+
+// 编辑器实例
+const editorRef = shallowRef<IDomEditor>();
+// 兼容 v-model:modelValue 与表单 autoLink 注入的 value
+const valueHtml = ref(props.modelValue || props.value || '');
+
+// 工具栏配置
+const toolbarConfig = {};
+
+// 编辑器配置
+const editorConfig: Partial<IEditorConfig> = {
+  placeholder: props.placeholder,
+  MENU_CONF: {},
+};
+
+// 同步外部值
+watch(
+  () => props.modelValue || props.value,
+  (value) => {
+    if (value !== valueHtml.value) {
+      valueHtml.value = value || '';
+    }
+  },
+);
+
+/**
+ * 值变化
+ * @param editor - 编辑器实例
+ */
+const handleChange = (editor: IDomEditor) => {
+  const html = editor.getHtml();
+  emit('update:modelValue', html);
+  emit('change', html);
+};
+
+/**
+ * 编辑器创建完成
+ * @param editor - 编辑器实例
+ */
+const handleCreated = (editor: IDomEditor) => {
+  editorRef.value = editor;
+};
+
+// 组件销毁时，销毁编辑器
+onBeforeUnmount(() => {
+  const editor = editorRef.value;
+  if (editor == null) return;
+  editor.destroy();
+});
+</script>
+
 <template>
-  <div style="border: 1px solid #ccc">
+  <div class="border border-solid border-gray-300 rounded z-100">
     <Toolbar
-      style="border-bottom: 1px solid #ccc"
+      ref="toolbarRef"
+      class="border-b border-solid border-gray-300"
       :editor="editorRef"
-      :defaultConfig="toolbarConfig"
-      mode="default"
+      :default-config="toolbarConfig"
+      :mode="'default'"
     />
     <Editor
-      style="overflow-y: hidden;"
-      :style="`height: ${ height || 300 }px`"
+      :style="{ height: `${props.height}px`, overflowY: 'hidden' }"
       v-model="valueHtml"
-      :defaultConfig="editorConfig"
-      mode="default"
-      @onCreated="handleCreated"
+      :default-config="editorConfig"
+      :mode="'default'"
+      @on-created="handleCreated"
       @onChange="handleChange"
     />
   </div>
 </template>
-
-<script lang="ts" setup>
-/**
- * @description: 富文本组件
- */
-import '@wangeditor/editor/dist/css/style.css'; // 引入 css
-import type { IDomEditor, IEditorConfig } from '@wangeditor/editor';
-import { onBeforeUnmount, ref, shallowRef, watch } from 'vue';
-import { Editor, Toolbar } from '@wangeditor/editor-for-vue';
-import { FILE_API } from '@/utils/config';
-
-interface DefineEmits {
-  (e: 'update:modelValue', value: string): void;
-}
-
-const emit = defineEmits<DefineEmits>();
-
-interface DefineProps {
-  modelValue?: string;
-  height?: number;
-}
-
-const props = withDefaults(defineProps<DefineProps>(), {});
-
-// 编辑器实例，必须用 shallowRef
-const editorRef = shallowRef();
-// 内容 HTML
-const valueHtml = ref(props.modelValue || '');
-// 工具栏配置
-const toolbarConfig = {};
-// 编辑器配置
-const editorConfig: Partial<IEditorConfig> = {
-  placeholder: '请输入内容...',
-  MENU_CONF: {
-    uploadImage: {
-      // 上传图片地址
-      server: FILE_API
-    },
-    uploadVideo: {
-      // 上传视频地址
-      server: FILE_API
-    }
-  }
-};
-
-// 组件销毁时，也及时销毁编辑器
-onBeforeUnmount(() => {
-  const editor = editorRef.value;
-  if (editor === null) return;
-  editor.destroy();
-});
-
-// 监听组件值变化
-watch(() => props.modelValue, value => {
-  const content = isHtml(value as string) ? value : `<p>${value}</p>`;
-  valueHtml.value = content as string;
-});
-
-/** 判断最外层是否有标签 */
-const isHtml = (text: string) => {
-  const reg = /^<([a-zA-Z]+)[^>]*>(.*)<\/\1>$/;
-  return reg.test(text);
-};
-
-/** 记录editor实例 */
-const handleCreated = (editor: IDomEditor) => {
-  editorRef.value = editor; // 记录 editor 实例，重要！
-};
-
-/** 处理变更 */
-const handleChange = (editor: IDomEditor) => {
-  emit('update:modelValue', editor.getHtml());
-};
-</script>

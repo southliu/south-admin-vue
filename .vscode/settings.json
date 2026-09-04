@@ -55,5 +55,9 @@
     "maxlength",
     "Cascader",
     "Cascaders",
+    "Popconfirm",
+  ],
+  "i18n-ally.localesPaths": [
+    "src/locales"
   ]
 }

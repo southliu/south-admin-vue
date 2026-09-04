@@ -1,23 +1,27 @@
-@import url("./default.less");
-
 /**
  * 修改主题
  * @param color - 字体颜色
- * @param bgColor - 背景颜色
- * @param svgColor - svg颜色
- * @param layoutContentBg - layout内容背景色
+ * @param bg-color - 背景颜色
+ * @param layout-content-bg - layout内容背景色
+ * @param content-bg-color - 内容背景颜色
+ * @param svg-color - svg颜色
  */
 .changeTheme(
-  @color: @primaryColor,
-  @bgColor: @primaryBg,
-  @svgColor: @svgColor,
-  @layoutContentBg: @layoutContentBg,
+  @color,
+  @bg-color,
+  @layout-content-bg,
+  @content-bg-color,
+  @svg-color
 ) {
   color: @color !important;
-  background: @bgColor !important;
+  background-color: @bg-color !important;
 
-  .change-icon {
-    color: @svgColor !important;
+  .bg {
+    background-color: @bg-color !important;
+  }
+
+  .change svg {
+    color: @svg-color !important;
   }
 
   h1,
@@ -29,25 +33,27 @@
     color: @color !important;
   }
 
-  #searches,
-  #pagination,
-  .theme-bg,
-  .layout-header {
-    color: @color !important;
-    background: @bgColor !important;
+  #layout-content {
+    background-color: @layout-content-bg !important;
   }
 
-  // antd
-  .ant-tabs,
-  .ant-pagination {
-    color: @color !important;
+  #card {
+    background-color: @content-bg-color !important;
   }
 
-  #layoutContent {
-    background-color: @layoutContentBg !important;
+  // 富文本
+  .w-e-toolbar,
+  .w-e-bar-item button,
+  .w-e-text-container,
+  .w-e-bar-item-menus-container {
+    color: @color !important;
+    background-color: @bg-color !important;
+    fill: @color !important;
   }
 
-  #searches .ant-form-item-label > label {
+  #header,
+  #layout {
     color: @color !important;
+    background-color: @bg-color !important;
   }
 }

@@ -1,24 +1,44 @@
+import type { Rule } from 'ant-design-vue/es/form';
+
+/** i18n 翻译函数（兼容 vue-i18n t 的常用签名） */
+export type Translate = (key: string, named?: Record<string, unknown>) => string;
+
 /**
  * @description: 配置项
  */
-export const TITLE_SUFFIX = 'South Admin'; // 标题后缀
-export const TOKEN = 'admin_token'; // token名称
-export const VERSION = 'admin_version'; // 版本
+export const TITLE_SUFFIX = (t: Translate): string => t('public.currentName'); // 标题后缀
 export const WATERMARK_PREFIX = 'admin'; // 水印前缀
+export const TOKEN = 'admin_token'; // token名称
+export const LANG = 'lang'; // 语言
+export const VERSION = 'admin_version'; // 版本
+export const THEME_KEY = 'theme_key'; // 主题
 export const EMPTY_VALUE = '-'; // 空值显示
 
-// 公共组件默认值
-export const PLEASE_ENTER = '请输入'; // 输入框默认文字
-export const PLEASE_SELECT = '请选择';// 选择框默认文字
-export const MAX_TAG_COUNT: number | 'responsive' = 'responsive'; // 最多显示多少个标签，responsive：自适应
-export const FORM_REQUIRED = [{ required: true }]; // 表单必填校验
+// 初始化分页数据
+export const INIT_PAGINATION = {
+  page: 1,
+  pageSize: 20,
+};
 
 // 日期格式化
-export const DATE_FORMAT = 'YYYY/MM/DD';
-export const TIME_FORMAT = 'YYYY/MM/DD HH:mm:ss';
+export const DATE_FORMAT = 'YYYY-MM-DD';
+export const TIME_FORMAT = 'YYYY-MM-DD HH:mm:ss';
+export const TIME_PICKER_FORMAT = 'HH:mm:ss';
 
-// 分页总数
-export const PAGE_SIZE = 20;
+// 公共组件默认值
+export const FORM_REQUIRED = [{ required: true }]; // 表单必填校验
+
+// 新增/编辑标题
+export const ADD_TITLE = (t: Translate, title?: string) =>
+  t('public.createTitle', { title: title ?? '' });
+export const EDIT_TITLE = (t: Translate, name: string, title?: string) =>
+  `${t('public.editTitle', { title: title ?? '' })}${name ? `(${name})` : ''}`;
+
+// 密码规则
+export const PASSWORD_RULE = (t: Translate): Rule => ({
+  pattern: /^(?=.*\d)(?=.*[a-zA-Z])[\da-zA-Z~!@#$%^&*+\.\_\-*]{6,30}$/,
+  message: t('login.passwordRuleMessage'),
+});
 
 // 环境判断
 const ENV = import.meta.env.VITE_ENV as string;
@@ -26,20 +46,3 @@ const ENV = import.meta.env.VITE_ENV as string;
 const URL = import.meta.env.VITE_BASE_URL as string;
 // 上传地址
 export const FILE_API = `${ENV === 'development' ? '/api' : URL}/authority/file/upload-file`;
-
-// 新增/编辑标题
-export const ADD_TITLE = '新增';
-export const EDIT_TITLE = (name: string, title?: string) => `编辑${ title ?? '' }${ name ? `(${name})` : '' }`;
-
-// 生成路由排除内容，不带后缀名转换成“/文件名/”格式
-export const ROUTER_EXCLUDE = [
-  '/login',
-  '/components',
-  '/utils',
-  '/lib',
-  '/hooks',
-  '/model',
-  '/403',
-  '/404',
-];
-

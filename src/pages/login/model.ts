@@ -5,28 +5,24 @@ export interface LoginData {
 }
 
 // 用户数据
-interface UserData {
+export interface User {
   id: number;
   username: string;
+  name: string;
   phone: string;
   email: string;
+  roles: number[];
 }
 
-// 授权数据
-export interface PermissionsData {
-  id: string;
-  operation: string[];
-}
-
-// 用户权限数据
-interface Roles {
+// 角色数据
+export interface Roles {
   id: string;
 }
 
 // 接口返回数据
 export interface LoginResult {
   token: string;
-  user: UserData;
-  permissions: PermissionsData[];
+  user: User;
+  permissions: string[];
   roles: Roles[];
 }

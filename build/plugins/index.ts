@@ -1,61 +1,61 @@
-import type { Plugin } from 'vite';
-import { AntDesignVueResolver } from 'unplugin-vue-components/resolvers';
-import { presetUno, presetAttributify, presetIcons } from 'unocss';
-import { timePlugin } from './time';
-import { versionUpdatePlugin } from './version';
+import type { PluginOption } from 'vite';
 import { visualizer } from 'rollup-plugin-visualizer';
 import vue from '@vitejs/plugin-vue';
-import AutoImport from 'unplugin-auto-import/vite';
-import PurgeIcons from 'vite-plugin-purge-icons';
-import Components from 'unplugin-vue-components/vite';
-import Unocss from 'unocss/vite';
-import vueJsx from '@vitejs/plugin-vue-jsx';
+import legacy from '@vitejs/plugin-legacy';
+import unocss from 'unocss/vite';
 import viteCompression from 'vite-plugin-compression';
-import Pages from 'vite-plugin-pages';
+import { timePlugin } from './time';
+import { nojekyllPlugin } from './nojekyll';
+import { autoImportPlugin } from './autoImport';
+import { componentsPlugin } from './components';
+import { versionUpdatePlugin } from './version';
 
-export function createVitePlugins() {
-  // 插件参数
-  const vitePlugins: (Plugin | Plugin[])[] = [
+/**
+ * 创建 vite 插件
+ */
+export function createVitePlugins(): PluginOption[] {
+  const isDev = process.env.NODE_ENV === 'development';
+
+  const vitePlugins: PluginOption[] = [
+    // vue3 插件
     vue(),
-    PurgeIcons({}),
-    Unocss({
-      presets: [
-        presetUno(), 
-        presetAttributify(), 
-        presetIcons()
-      ],
-    }),
-    vueJsx({}),
-    // 压缩包
-    viteCompression(),
-    AutoImport({
-      imports: [
-        'vue',
-        'vue-router',
-        '@vueuse/core',
-      ],
-      dts: 'src/auto-imports.d.ts'
-    }),
-    Components({
-      resolvers: [
-        AntDesignVueResolver()
-      ]
-    }),
-    Pages({
-      exclude: [
-        '**/components/*.vue'
-      ]
-    }),
-    // 包分析
-    visualizer({
-      gzipSize: true,
-      brotliSize: true,
-    }),
-    // 打包时间
-    timePlugin(),
-    // 版本控制
-    versionUpdatePlugin()
+    unocss(),
+    // 自动导入
+    autoImportPlugin(),
+    // 组件自动导入
+    componentsPlugin(),
   ];
+
+  // 生产环境才启用这些插件
+  if (!isDev) {
+    vitePlugins.push(
+      // 压缩包
+      viteCompression(),
+      // 兼容低版本
+      legacy({
+        targets: [
+          'Android > 39',
+          'Chrome >= 60',
+          'Safari >= 10.1',
+          'iOS >= 10.3',
+          'Firefox >= 54',
+          'Edge >= 15',
+        ],
+        additionalLegacyPolyfills: ['regenerator-runtime/runtime'],
+      }),
+      // 版本控制
+      versionUpdatePlugin(),
+      // 生成 .nojekyll 空文件
+      nojekyllPlugin(),
+      // 包分析
+      visualizer({
+        gzipSize: true,
+        brotliSize: true,
+      }),
+      // 打包时间
+      timePlugin(),
+    );
+  }
 
   return vitePlugins;
 }

@@ -2,11 +2,11 @@ import { message } from 'ant-design-vue';
 import { encryption, decryption } from './crypto';
 
 /**
- * @description: localStorage封装
+ * @description: localStorage封装（AES加密存储）
  */
 
-// 默认缓存期限为1天
-const DEFAULT_CACHE_TIME = 60 * 60 * 24 * 1;
+// 默认缓存期限为2天
+const DEFAULT_CACHE_TIME = 60 * 60 * 24 * 2;
 
 interface IStorageData {
   value: unknown;
@@ -17,9 +17,13 @@ interface IStorageData {
  * 设置本地缓存
  * @param key - 唯一值
  * @param value - 缓存值
- * @param expire - 缓存期限
+ * @param expire - 缓存期限（秒），0表示永久
  */
-export function setLocalInfo(key: string, value: unknown, expire: number | null = DEFAULT_CACHE_TIME) {
+export function setLocalInfo(
+  key: string,
+  value: unknown,
+  expire: number | null = DEFAULT_CACHE_TIME,
+) {
   // 缓存时间
   const time = expire !== null ? new Date().getTime() + expire * 1000 : null;
   // 缓存数据
@@ -34,7 +38,7 @@ export function setLocalInfo(key: string, value: unknown, expire: number | null 
  */
 export function getLocalInfo<T>(key: string) {
   const json = localStorage.getItem(key);
-  
+
   if (json) {
     let data: IStorageData | null = null;
     try {

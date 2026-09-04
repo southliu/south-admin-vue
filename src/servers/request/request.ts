@@ -3,13 +3,13 @@ import type {
   AxiosResponse,
   AxiosInstance,
   InternalAxiosRequestConfig,
-  AxiosRequestConfig
+  AxiosRequestConfig,
 } from 'axios';
-import type {
-  RequestInterceptors,
-  CreateRequestConfig,
-  ServerResult
-} from './types';
+import type { RequestInterceptors, CreateRequestConfig, ServerResult } from './types';
+
+interface NewAxiosRequestConfig extends AxiosRequestConfig {
+  _mapKey?: string;
+}
 
 class AxiosRequest {
   // axios 实例
@@ -24,43 +24,25 @@ class AxiosRequest {
     // 初始化存放取消请求控制器Map
     this.abortControllerMap = new Map();
     this.interceptorsObj = config.interceptors;
+
     // 拦截器执行顺序 接口请求 -> 实例请求 -> 全局请求 -> 实例响应 -> 全局响应 -> 接口响应
     this.instance.interceptors.request.use(
       (res: InternalAxiosRequestConfig) => {
         const controller = new AbortController();
-        let url = res.method || '';
         res.signal = controller.signal;
 
-        if (res.url) url += `^${res.url}`;
+        const mapKey = this.generateMapKey(res);
+        // 保存key到请求配置中，供响应拦截器使用
+        (res as NewAxiosRequestConfig)._mapKey = mapKey;
 
-        // 如果存在参数
-        if (res.params) {
-          for (const key in res.params) {
-            url += `&${key}=${res.params[key]}`;
-          }
-        }
-
-        // 如果存在post数据
-        if (typeof res.data === 'object') {
-          for (const key in res.data) {
-            url += `#${key}=${res.data[key]}`;
-          }
-        }
-        if (typeof res.data === 'string' && res.data?.[0] === '{' && res.data?.[res.data?.length - 1] === '}') {
-          const obj = JSON.parse(res.data);
-          for (const key in obj) {
-            url += `#${key}=${obj[key]}`;
-          }
-        }
-
-        // 如果存在则删除该请求
-        if (this.abortControllerMap.get(url)) {
-          console.warn('取消重复请求：', url);
-          this.cancelRequest(url);
+        // 如果存在则删除该请求（重复请求去重）
+        if (this.abortControllerMap.get(mapKey)) {
+          console.warn('取消重复请求：', mapKey);
+          this.cancelRequest(mapKey);
         } else {
-          this.abortControllerMap.set(url, controller);
+          this.abortControllerMap.set(mapKey, controller);
         }
-        
+
         return res;
       },
       (err: object) => err,
@@ -77,15 +59,16 @@ class AxiosRequest {
     );
     // 全局响应拦截器保证最后执行
     this.instance.interceptors.response.use(
-      // 因为我们接口的数据都在res.data下，所以我们直接返回res.data
+      // 接口的数据都在res.data下，直接返回res.data
       (res: AxiosResponse) => {
-        const url = res.config.url || '';
-        this.abortControllerMap.delete(url);
+        const mapKey = (res.config as NewAxiosRequestConfig)._mapKey || '';
+        this.abortControllerMap.delete(mapKey);
         return res.data;
       },
       (err: object) => err,
     );
   }
+
   /**
    * 取消全部请求
    */
@@ -95,6 +78,7 @@ class AxiosRequest {
     }
     this.abortControllerMap.clear();
   }
+
   /**
    * 取消指定的请求
    * @param url - 待取消的请求URL
@@ -106,37 +90,76 @@ class AxiosRequest {
       this.abortControllerMap.delete(_url);
     }
   }
+
   /**
-   * get请求  
+   * get请求
    * @param url - 链接
    * @param options - 参数
    */
-  get<T = object>(url: string, options?: unknown) {
-    return this.instance.get(url, options || {}) as Promise<ServerResult<T>>;
+  get<T = object>(url: string, options = {}) {
+    return this.instance.get(url, options) as Promise<ServerResult<T>>;
   }
+
   /**
    * post请求
    * @param url - 链接
    * @param options - 参数
    */
-  post<T = object>(url: string, options?: unknown, config?: AxiosRequestConfig<object>) {
-    return this.instance.post(url, options || {}, config) as Promise<ServerResult<T>>;
+  post<T = object>(url: string, options = {}, config?: AxiosRequestConfig) {
+    return this.instance.post(url, options, config) as Promise<ServerResult<T>>;
   }
+
   /**
    * put请求
    * @param url - 链接
    * @param options - 参数
    */
-  put<T = object>(url: string, options?: unknown, config?: AxiosRequestConfig<object>) {
-    return this.instance.put(url, options || {}, config) as Promise<ServerResult<T>>;
+  put<T = object>(url: string, options = {}, config?: AxiosRequestConfig) {
+    return this.instance.put(url, options, config) as Promise<ServerResult<T>>;
   }
+
+  /**
+   * patch请求
+   * @param url - 链接
+   * @param options - 参数
+   */
+  patch<T = object>(url: string, options = {}, config?: AxiosRequestConfig) {
+    return this.instance.patch(url, options, config) as Promise<ServerResult<T>>;
+  }
+
   /**
    * delete请求
    * @param url - 链接
    * @param options - 参数
    */
-  delete<T = object>(url: string, options?: unknown) {
-    return this.instance.delete(url, options || {}) as Promise<ServerResult<T>>;
+  delete<T = object>(url: string, options = {}) {
+    return this.instance.delete(url, options) as Promise<ServerResult<T>>;
+  }
+
+  /**
+   * 生成请求的唯一key（考虑参数）
+   */
+  private generateMapKey(requestConfig: NewAxiosRequestConfig) {
+    let url = requestConfig.method || '';
+    if (requestConfig.url) url += `^${requestConfig.url}`;
+    // 如果存在参数
+    if (requestConfig.params) {
+      for (const key in requestConfig.params) {
+        url += `&${key}=${requestConfig.params[key]}`;
+      }
+    }
+    // 如果存在post数据
+    if (
+      requestConfig.data &&
+      requestConfig.data?.[0] === '{' &&
+      requestConfig.data?.[requestConfig.data?.length - 1] === '}'
+    ) {
+      const obj = JSON.parse(requestConfig.data);
+      for (const key in obj) {
+        url += `#${key}=${obj[key]}`;
+      }
+    }
+    return url;
   }
 }
 

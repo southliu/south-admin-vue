@@ -1,268 +1,193 @@
-<template>
-  <BasicContent :isPermission="checkPermission(pagePermission.page)">
-    <template #top>
-      <BasicSearch
-        :list="searchList"
-        :data="searchData"
-        :isLoading="isLoading"
-        @handleFinish="handleSearch"
-      />
-    </template>
-
-    <BtnRow>
-      <CreateBtn
-        v-if="checkPermission(pagePermission.create)"
-        @click="onCreate"
-      />
-    </BtnRow>
-
-    <BasicTable
-      :data="tableData"
-      :columns="tableColumns"
-      :isLoading="isLoading"
-      :pagination="{
-        current: pagination.page,
-        pageSize: pagination.pageSize,
-        total: pagination.total,
-        onChange: handlePagination,
-      }"
-    >
-      <template #status="{ record }">
-        {{ record.status ? '开启' : '关闭' }}
-      </template>
-
-      <template #operate="{ record }">
-        <BasicBtn
-          v-if="checkPermission(pagePermission.permission)"
-          class="btn-space"
-          :isLoading="isLoading"
-          @click="openPermission(record.id)"
-        >
-          权限
-        </BasicBtn>
-        <UpdateBtn
-          v-if="checkPermission(pagePermission.update)"
-          class="btn-space"
-          :isLoading="isCreateLoading"
-          @click="onUpdate(record)"
-        />
-        <DeleteBtn
-          v-if="checkPermission(pagePermission.delete)"
-          :isLoading="isLoading"
-          @click="handleDelete(record.id)"
-        />
-      </template>
-    </BasicTable>
-  </BasicContent>
-
-  <BasicModal
-    v-model:isOpen="creates.isOpen"
-    :isLoading="isCreateLoading"
-    :title="creates.title"
-    @handleFinish="createSubmit"
-    @handleCancel="onCloseCreate"
-  >
-    <BasicForm
-      ref="createFormRef"
-      :list="createList"
-      :labelCol="{ span: 6 }"
-      :data="creates.data"
-      @handleFinish="handleCreate"
-    />
-  </BasicModal>
-
-  <PermissionDrawer
-    :isOpen="permissionConfig.isOpen"
-    :treeData="permissionConfig.treeData"
-    :checkedKeys="permissionConfig.checkedKeys"
-    @onClose="closePermission"
-    @onSubmit="permissionSubmit"
-  />
-</template>
-
-<script lang="ts" setup>
-import type { FormData } from '#/form';
-import type { BasicFormProps } from '@/components/Form/model';
-import type { CreateData, TableData, PaginationData } from '#/public';
-import type { DataNode } from 'ant-design-vue/lib/tree';
-import type { Key } from 'ant-design-vue/lib/vc-tree/interface';
-import { message } from 'ant-design-vue';
-import { onActivated, reactive, shallowRef, ref } from 'vue';
-import { checkPermission } from '@/utils/permissions';
-import { ADD_TITLE, EDIT_TITLE, PAGE_SIZE } from '@/utils/config';
-import { UpdateBtn, DeleteBtn, BasicBtn, CreateBtn } from '@/components/Buttons';
-import { getPermission, savePermission } from '@/servers/system/menu';
+<script setup lang="ts">
+import type { BaseFormData } from '#/form';
+import type { Key } from 'ant-design-vue/es/table/interface';
+import { useI18n } from 'vue-i18n';
+import { computed, onActivated, onMounted, ref, useTemplateRef } from 'vue';
 import {
-  searchList,
-  createList,
-  tableColumns,
-  pagePermission
-} from './model';
-import {
-  getSystemUserPage,
-  getSystemUserById,
-  createSystemUser,
-  updateSystemUser,
-  deleteSystemUser,
+  batchDeleteUser,
+  createUser,
+  deleteUser,
+  getUserById,
+  getUserPage,
+  updateUser,
 } from '@/servers/system/user';
-import BtnRow from '@/components/BtnRow/index.vue';
-import BasicContent from '@/components/Content/BasicContent.vue';
-import BasicTable from '@/components/Table/BasicTable.vue';
-import BasicSearch from '@/components/Search/BasicSearch.vue';
-import BasicForm from '@/components/Form/BasicForm.vue';
-import BasicModal from '@/components/Modal/BasicModal.vue';
-import PermissionDrawer from './components/PermissionDrawer.vue';
+import BaseCard from '@/components/Card/BaseCard.vue';
+import BaseContent from '@/components/Content/BaseContent.vue';
+import BaseSearch from '@/components/Search/BaseSearch.vue';
+import BaseTable from '@/components/Table/BaseTable.vue';
+import BasePagination from '@/components/Pagination/BasePagination.vue';
+import BaseModal from '@/components/Modal/BaseModal.vue';
+import BaseForm from '@/components/Form/BaseForm.vue';
+import UpdateBtn from '@/components/Buttons/UpdateBtn.vue';
+import DeleteBtn from '@/components/Buttons/DeleteBtn.vue';
+import { checkPermission } from '@/utils/permissions';
+import { ADD_TITLE, EDIT_TITLE, INIT_PAGINATION } from '@/utils/config';
+import { message } from '@/utils/message';
+import { useCommonStore } from '@/hooks/useCommonStore';
+import { useSearchUrlParams } from '@/hooks/useSearchUrlParams';
+import { searchList, tableColumns, createList } from './model';
 
-interface PermissionConfig {
+defineOptions({ name: 'SystemUser' });
+
+// 当前行数据
+interface RowData {
   id: string;
-  isOpen: boolean;
-  checkedKeys: Key[];
-  treeData: DataNode[];
+  username: string;
 }
-
-defineOptions({
-  name: 'SystemUser'
-});
-
-const isLoading = ref(false);
-const isCreateLoading = ref(false);
-const createFormRef = shallowRef<BasicFormProps>();
-
-// 权限配置
-const permissionConfig = reactive<PermissionConfig>({
-  id: '',
-  isOpen: false,
-  checkedKeys: [],
-  treeData: []
-});
 
 // 初始化新增数据
 const initCreate = {
   status: 1,
-  user: { name: { test: '1234' } }
 };
 
-// 搜索数据
-const searchData = ref<FormData>({});
+const { t } = useI18n();
+const createFormRef = useTemplateRef<{ submit: () => void; setFieldsValue: (v: Record<string, unknown>) => void }>('createFormRef');
+const searchFormRef = useTemplateRef<{ setFieldsValue: (v: Record<string, unknown>) => void }>('searchFormRef');
 
-// 新增数据
-const creates = reactive<CreateData>({
-  id: '',
-  isOpen: false,
-  title: ADD_TITLE,
-  data: initCreate
-});
+const { handleSetSearchParams } = useSearchUrlParams(searchFormRef);
 
-// 表格数据
-const tableData = ref<TableData[]>([]);
+const isLoading = ref(false);
+const isCreateLoading = ref(false);
+const isCreateOpen = ref(false);
+const createTitle = ref(ADD_TITLE(t));
+const createId = ref('');
+const createData = ref<BaseFormData>(initCreate);
+const searchData = ref<BaseFormData>({});
+const page = ref(INIT_PAGINATION.page);
+const pageSize = ref(INIT_PAGINATION.pageSize);
+const total = ref(0);
+const tableData = ref<BaseFormData[]>([]);
+const selectedRowKeys = ref<Key[]>([]);
 
-// 分页数据
-const pagination = reactive<PaginationData>({
-  total: 0,
-  page: 1,
-  pageSize: PAGE_SIZE,
-});
+const { permissions } = useCommonStore();
 
-onActivated(() => {
-  getPage();
-});
+// 权限前缀
+const permissionPrefix = '/authority/user';
+
+// 权限
+const pagePermission = computed(() => checkPermission(permissionPrefix, permissions.value));
 
 /** 获取表格数据 */
 const getPage = async () => {
-  const newPagination = { ...pagination };
-  delete newPagination.total;
-  const query = { ...newPagination, ...searchData.value };
+  const params = { ...searchData.value, page: page.value, pageSize: pageSize.value };
+
   try {
     isLoading.value = true;
-    const { code, data } = await getSystemUserPage(query);
+    const { code, data } = await getUserPage(params);
     if (Number(code) !== 200) return;
-    const { items, total } = data;
-    tableData.value = items;
-    pagination.total = Number(total) || 0;
+    const { items, total: resultTotal } = data;
+    total.value = resultTotal || 0;
+    tableData.value = items || [];
   } finally {
     isLoading.value = false;
   }
 };
 
-/** 表格提交 */
-const createSubmit = () => {
-  createFormRef.value?.handleSubmit();
-};
+// 首次进入自动加载接口数据
+onMounted(() => {
+  if (pagePermission.value.page) getPage();
+});
+
+// 每次进入调用（keep-alive 激活）
+onActivated(() => {
+  getPage();
+});
 
 /**
- * 搜索提交
+ * 点击搜索
  * @param values - 表单返回数据
  */
-const handleSearch = (values: FormData) => {
+const onSearch = (values: BaseFormData) => {
+  page.value = 1;
   searchData.value = values;
-  pagination.page = 1;
+  handleSetSearchParams(values);
   getPage();
 };
 
 /** 点击新增 */
 const onCreate = () => {
-  creates.isOpen = !creates.isOpen;
-  creates.title = ADD_TITLE;
-  creates.id = '';
-  creates.data = initCreate;
+  isCreateOpen.value = true;
+  createTitle.value = ADD_TITLE(t);
+  createId.value = '';
+  createData.value = { ...initCreate };
 };
 
 /**
  * 点击编辑
- * @param record - 当前行数据
+ * @param id - 唯一值
  */
-const onUpdate = async (record: FormData) => {
-  const { id, name } = record;
-  creates.isOpen = !creates.isOpen;
-  creates.id = id as string;
-  creates.title = EDIT_TITLE(name as string);
-
+const onUpdate = async (id: string) => {
   try {
+    isCreateOpen.value = true;
+    createTitle.value = EDIT_TITLE(t, id);
+    createId.value = id;
     isCreateLoading.value = true;
-    const { code, data } = await getSystemUserById(id as string);
+    const { code, data } = await getUserById(id);
     if (Number(code) !== 200) return;
-    creates.data = data;
+    createData.value = data;
   } finally {
     isCreateLoading.value = false;
   }
+};
+
+/** 表格提交 */
+const createSubmit = () => {
+  createFormRef.value?.submit();
+};
+
+/** 关闭新增/修改弹窗 */
+const closeCreate = () => {
+  isCreateOpen.value = false;
 };
 
 /**
  * 新增/编辑提交
  * @param values - 表单返回数据
  */
-const handleCreate = async (values: FormData) => {
+const handleCreate = async (values: BaseFormData) => {
   try {
     isCreateLoading.value = true;
-    const functions = () => creates.id ? updateSystemUser(creates.id, values) : createSystemUser(values);
-    const { code, message: resultMessage } = await functions();
+    const request = () => (createId.value ? updateUser(createId.value, values) : createUser(values));
+    const { code, message: messageInfo } = await request();
     if (Number(code) !== 200) return;
+    message.success(messageInfo || t('public.successfulOperation'));
+    isCreateOpen.value = false;
     getPage();
-    creates.id = '';
-    creates.isOpen = false;
-    creates.data = initCreate;
-    createFormRef.value?.handleReset();
-    message.success(resultMessage || '操作成功');
   } finally {
     isCreateLoading.value = false;
   }
 };
 
-/** 关闭新增/编辑 */
-const onCloseCreate = () => {
-  creates.isOpen = false;
-};
-
 /**
- * 删除
- * @param id - 唯一标识
+ * 点击删除
+ * @param id - 唯一值
  */
-const handleDelete = async (id: string | number) => {
+const onDelete = async (id: string) => {
   try {
     isLoading.value = true;
-    const data = await deleteSystemUser(id as string);
-    if (data?.code === 200) {
-      message.success(data?.message || '删除成功');
+    const { code, message: messageInfo } = await deleteUser(id);
+    if (Number(code) === 200) {
+      message.success(messageInfo || t('public.successfullyDeleted'));
+      getPage();
+    }
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+/** 处理批量删除 */
+const handleBatchDelete = async () => {
+  try {
+    if (!selectedRowKeys.value.length) {
+      return message.warning({
+        content: t('public.tableSelectWarning'),
+        key: 'pleaseSelect',
+      });
+    }
+    isLoading.value = true;
+    const { code, message: messageInfo } = await batchDeleteUser({ ids: selectedRowKeys.value });
+    if (Number(code) === 200) {
+      message.success(messageInfo || t('public.successfullyDeleted'));
       getPage();
     }
   } finally {
@@ -271,53 +196,107 @@ const handleDelete = async (id: string | number) => {
 };
 
 /**
- * 分页
- * @param page - 当前页
- * @param pageSize - 分页总数
+ * 处理分页
+ * @param currentPage - 当前页数
+ * @param currentPageSize - 每页条数
  */
-const handlePagination = (page: number, pageSize: number) => {
-  pagination.page = page;
-  pagination.pageSize = pageSize;
+const onChangePagination = (currentPage: number, currentPageSize: number) => {
+  page.value = currentPage;
+  pageSize.value = currentPageSize;
   getPage();
 };
 
-/** 开启权限 */
-const openPermission = async (id: string) => {
-  try {
-    isLoading.value = true;
-    const params = { userId: id };
-    const { code, data } = await getPermission(params);
-    if (Number(code) !== 200) return;
-    const { defaultCheckedKeys, treeData } = data;
-    permissionConfig.id = id;
-    permissionConfig.treeData = treeData;
-    permissionConfig.checkedKeys = Object.values(defaultCheckedKeys);
-    permissionConfig.isOpen = true;
-  } finally {
-    isLoading.value = false;
-  }
-};
-
-/** 关闭权限 */
-const closePermission = () => {
-  permissionConfig.isOpen = false;
-};
-
 /**
- * 权限提交
+ * 监听表格多选变化
+ * @param keys - 勾选值
  */
-const permissionSubmit = async (checked: Key[]) => {
-  try {
-    isLoading.value = true;
-    const params = {
-      menuIds: checked,
-      userId: permissionConfig.id
-    };
-    const data = await savePermission(params);
-    message.success(data.message || '授权成功');
-    permissionConfig.isOpen = false;
-  } finally {
-    isLoading.value = false;
-  }
+const onSelectChange = (keys: Key[]) => {
+  selectedRowKeys.value = keys;
 };
+
+// 表格多选
+const rowSelection = computed(() => ({
+  selectedRowKeys: selectedRowKeys.value,
+  onChange: onSelectChange,
+}));
+
+// 列配置
+const columns = computed(() => tableColumns(t));
 </script>
+
+<template>
+  <BaseContent :is-permission="pagePermission.page">
+    <BaseCard>
+      <BaseSearch
+        ref="searchFormRef"
+        :list="searchList(t)"
+        :data="searchData"
+        type="grid"
+        :is-loading="isLoading"
+        @handle-finish="onSearch"
+      />
+    </BaseCard>
+
+    <BaseCard class="mt-10px">
+      <BaseTable
+        :is-loading="isLoading"
+        :is-create="pagePermission.create"
+        :columns="columns"
+        :data-source="tableData"
+        :row-selection="rowSelection"
+        @get-page="getPage"
+        @on-create="onCreate"
+      >
+        <template #leftContent>
+          <DeleteBtn
+            is-icon
+            :is-loading="isLoading"
+            btn-type="batchDelete"
+            @handle-delete="handleBatchDelete"
+          />
+        </template>
+
+        <template #rightContent>
+          <div>（搜索将参数放入url）</div>
+        </template>
+
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.dataIndex === 'operate'">
+            <div class="flex flex-wrap gap-5px">
+              <UpdateBtn v-if="pagePermission.update" @click="onUpdate((record as RowData).id)" />
+              <DeleteBtn
+                v-if="pagePermission.delete"
+                :name="(record as RowData).username"
+                @handle-delete="onDelete((record as RowData).id)"
+              />
+            </div>
+          </template>
+        </template>
+      </BaseTable>
+
+      <BasePagination
+        :disabled="isLoading"
+        :current="page"
+        :page-size="pageSize"
+        :total="total"
+        @change="onChangePagination"
+      />
+    </BaseCard>
+
+    <BaseModal
+      :title="createTitle"
+      :open="isCreateOpen"
+      :is-loading="isCreateLoading"
+      @ok="createSubmit"
+      @cancel="closeCreate"
+    >
+      <BaseForm
+        ref="createFormRef"
+        :list="createList(t, !createId)"
+        :label-col="{ span: 4 }"
+        :data="createData"
+        @handle-finish="handleCreate"
+      />
+    </BaseModal>
+  </BaseContent>
+</template>

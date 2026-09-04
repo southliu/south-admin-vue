@@ -1,4 +1,6 @@
-import type { DefaultOptionType } from "ant-design-vue/es/select";
+import type { EnumShowType } from '#/public';
+import type { Translate } from './config';
+
 /**
  * @description: 公用常量
  */
@@ -6,41 +8,67 @@ import type { DefaultOptionType } from "ant-design-vue/es/select";
 /**
  * 颜色
  */
- export enum colors {
-  success = 'green',
+export enum colors {
+  success = '#87d068',
   primary = '#409EFF',
   warning = '#E6A23C',
-  danger = 'red',
-  info = '#909399'
+  danger = '#f50',
+  info = '#909399',
+  magenta = 'magenta',
+  red = 'red',
+  volcano = 'volcano',
+  orange = 'orange',
+  gold = 'gold',
+  lime = 'lime',
+  green = 'green',
+  cyan = 'cyan',
+  blue = 'blue',
+  geekblue = 'geekblue',
+  purple = 'purple',
 }
 
-export interface IConstant extends Omit<DefaultOptionType, 'value'> {
-  value: string | number | boolean;
+export interface IConstant {
+  value: string | number;
   label: string;
+  type?: EnumShowType;
   color?: colors;
+  children?: IConstant[];
+  disabled?: boolean;
 }
 
 /**
  * 开启状态
  */
- export const OPEN_CLOSE: IConstant[] = [
-  { label: '开启', value: 1 },
-  { label: '关闭', value: 0 }
+export const OPEN_CLOSE = (t: Translate): IConstant[] => [
+  { label: t('public.open'), value: 1, color: colors.green, type: 'tag' },
+  { label: t('public.close'), value: 0, color: colors.red, type: 'tag' },
 ];
 
 /**
  * 菜单状态
  */
- export const MENU_STATUS: IConstant[] = [
-  { label: '显示', value: 1 },
-  { label: '隐藏', value: 0 }
+export const MENU_STATUS = (t: Translate): IConstant[] => [
+  { label: t('public.show'), value: 1, color: colors.green, type: 'tag' },
+  { label: t('public.hide'), value: 0, color: colors.red, type: 'tag' },
 ];
 
 /**
  * 菜单类型
  */
-export const MENU_TYPE: IConstant[] = [
-  { label: '目录', value: 0 },
-  { label: '菜单', value: 1 },
-  { label: '按钮', value: 2 },
+export const MENU_TYPES = (t: Translate): IConstant[] => [
+  { label: t('systems.menu.catalog'), value: 1, type: 'tag', color: colors.green },
+  { label: t('systems.menu.menu'), value: 2, type: 'tag', color: colors.blue },
+  { label: t('systems.menu.button'), value: 3, type: 'tag', color: colors.cyan },
+];
+
+/**
+ * 菜单作用类型
+ */
+export const MENU_ACTIONS = (t: Translate): IConstant[] => [
+  { value: 'create', label: t('system.create') },
+  { value: 'update', label: t('system.update') },
+  { value: 'delete', label: t('system.delete') },
+  { value: 'detail', label: t('system.detail') },
+  { value: 'export', label: t('system.export') },
+  { value: 'status', label: t('system.status') },
 ];

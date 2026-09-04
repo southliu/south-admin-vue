@@ -1,37 +1,25 @@
+<script setup lang="ts">
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { ConfigProvider, theme } from 'ant-design-vue';
+import enUS from 'ant-design-vue/es/locale/en_US';
+import zhCN from 'ant-design-vue/es/locale/zh_CN';
+import { usePublicStore } from '@/stores/public';
+
+const { locale } = useI18n();
+const publicStore = usePublicStore();
+
+// antd 语言
+const antdLocale = computed(() => (locale.value === 'en' ? enUS : zhCN));
+
+// antd 主题算法
+const themeAlgorithm = computed(() =>
+  publicStore.theme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
+);
+</script>
+
 <template>
-  <ConfigProvider
-    :locale="zhCN"
-    :theme="{
-      algorithm: [themeType === 'dark' ? darkAlgorithm : defaultAlgorithm]
-    }"
-  >
-    <div class="font-sans">
-      <router-view />
-    </div>
+  <ConfigProvider :locale="antdLocale" :theme="{ algorithm: themeAlgorithm }">
+    <RouterView />
   </ConfigProvider>
 </template>
-
-<script lang="ts" setup>
-import { onMounted } from 'vue';
-import { storeToRefs } from 'pinia';
-import { usePublicStore } from '@/stores/public';
-import { ConfigProvider, theme } from 'ant-design-vue';
-import zhCN from 'ant-design-vue/es/locale/zh_CN';
-import dayjs from 'dayjs';
-import 'dayjs/locale/zh-cn';
-
-dayjs.locale('zh-cn');
-
-// antd主题
-const { defaultAlgorithm, darkAlgorithm } = theme;
-
-const publicStore = usePublicStore();
-const { themeType } = storeToRefs(publicStore);
-
-onMounted(() => {
-  // 关闭loading
-  if (document?.getElementById('first')) {
-    (document.getElementById('first') as HTMLElement).style.display = 'none';
-  }
-});
-</script>

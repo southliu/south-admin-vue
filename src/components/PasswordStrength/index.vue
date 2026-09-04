@@ -1,55 +1,28 @@
-<template>
-  <div>
-    <InputPassword
-      allowClear
-      :placeholder="PLEASE_ENTER"
-      v-bind="{ ...attrs, ...componentProps }"
-      :value="value"
-      @update:value="handleUpdateValue"
-    />
-
-    <StrengthBar
-      :strength="strength"
-      :class="value ? 'flex' : 'none'"
-    />
-  </div>
-</template>
-
-<script lang="ts" setup>
-/**
- * @description: 密码强度组件
- */
-import type { InputProps } from 'ant-design-vue';
-import { useAttrs, ref } from 'vue';
-import { InputPassword } from 'ant-design-vue';
-import { PLEASE_ENTER } from '@/utils/config';
+<script setup lang="ts">
+import { Input } from 'ant-design-vue';
+import { useI18n } from 'vue-i18n';
+import { ref, watch } from 'vue';
+import { useDebounceFn } from '@vueuse/core';
 import StrengthBar from './components/StrengthBar.vue';
 
-defineOptions({
-  name: 'PasswordStrength'
-});
+defineOptions({ name: 'PasswordStrength' });
 
-interface DefineEmits {
-  (e: 'update:value', value: string): void;
-}
+// 密码值（表单 autoLink 注入 value/onChange）
+const value = defineModel<string>('value');
 
-const emit = defineEmits<DefineEmits>();
+const props = defineProps<{
+  placeholder?: string;
+}>();
 
-interface DefineProps {
-  value?: string;
-  componentProps?: InputProps;
-}
-
-withDefaults(defineProps<DefineProps>(), {});
-
-const attrs = useAttrs();
+const { t } = useI18n();
 const strength = ref(0);
 
 /**
  * 密码强度判断
  * @param value - 值
  */
-const handleStrength = (value: string) => {
+const handleStrength = useDebounceFn((value: string) => {
+  if (!value) return;
   let level = 0;
   if (/\d/.test(value)) level++; // 有数字强度加1
   if (/[a-z]/.test(value)) level++; // 有小写字母强度加1
@@ -57,14 +30,23 @@ const handleStrength = (value: string) => {
   if (value.length > 10) level++; // 长度大于10强度加1
   if (/[\.\~\@\#\$\^\&\*]/.test(value)) level++; // 有以下特殊字符强度加1
   strength.value = level;
-};
+}, 500);
 
-/**
- * 值更新
- * @param value - 值
- */
-const handleUpdateValue = (value: string) => {
-  emit('update:value', value);
-  handleStrength(value);
-};
+// 监听值变化
+watch(value, (val) => {
+  handleStrength(val || '');
+});
 </script>
+
+<template>
+  <div>
+    <Input.Password
+      v-model:value="value"
+      allow-clear
+      :placeholder="props.placeholder || t('public.inputPleaseEnter')"
+      autocomplete="password"
+    />
+
+    <StrengthBar v-if="strength" :strength="strength" />
+  </div>
+</template>

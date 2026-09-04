@@ -1,125 +1,70 @@
-<template>
-  <TreeSelect
-    v-model:value="selectValue"
-    allowClear
-    showSearch
-    :maxTagCount="MAX_TAG_COUNT"
-    :placeholder="PLEASE_SELECT"
-    :treeNodeFilterProp="optionFilterLabel"
-    :showCheckedStrategy="SHOW_ALL"
-    v-bind="{ ...attrs, ...componentProps }"
-    :treeData="treeData"
-    @change="handleChange"
-    @dropdownVisibleChange="handleDropdownVisibleChange"
-  >
-    <template v-if="isLoading" #notFoundContent>
-      <BasicLoading />
-    </template>
-  </TreeSelect>
-</template>
-
-<script lang="ts" setup>
-/**
- * @description: 根据API获取数据树形下拉组件
- */
-import type { ApiSelectParam, ApiTreeSelectProps } from '#/form';
+<script setup lang="ts">
+import type { ApiTreeSelectProps } from './types';
 import type { TreeSelectProps } from 'ant-design-vue';
-import type { SelectValue, DefaultOptionType } from 'ant-design-vue/es/select';
-import { onMounted, computed, useAttrs, watch, ref } from 'vue';
-import { TreeSelect } from 'ant-design-vue';
-import { handleSpliceTreeLabel } from './utils/helper';
-import { PLEASE_SELECT, MAX_TAG_COUNT } from '@/utils/config';
-import BasicLoading from '../Loading/BasicLoading.vue';
+import { TreeSelect, Spin } from 'ant-design-vue';
+import { useI18n } from 'vue-i18n';
+import { onMounted, ref } from 'vue';
+import { MAX_TAG_COUNT } from './index';
 
-const SHOW_ALL = TreeSelect.SHOW_ALL;
+defineOptions({ name: 'ApiTreeSelect' });
 
-defineOptions({
-  name: 'ApiTreeSelect'
-});
+const props = defineProps<ApiTreeSelectProps>();
 
-interface DefineEmits {
-  (e: 'update:modelValue', value: SelectValue): void;
-  (e: 'update:value', value: SelectValue): void;
-  (e: 'update', value: SelectValue, list: unknown[]): void;
-}
-
-const emit = defineEmits<DefineEmits>();
-
-interface DefineProps extends ApiSelectParam {
-  modelValue?: SelectValue;
-  value?: SelectValue;
-  componentProps?: ApiTreeSelectProps;
-  onDropdownVisibleChange?: (open: boolean) => void
-}
-
-const props = withDefaults(defineProps<DefineProps>(), {});
-
-const attrs: ApiTreeSelectProps = useAttrs();
-const treeData = ref<TreeSelectProps['treeData']>([]);
-const selectValue = ref(props.value || props.modelValue);
+const { t } = useI18n();
 const isLoading = ref(false);
-
-const optionFilterLabel = computed(() => {
-  return props.componentProps?.fieldNames?.label || attrs?.fieldNames?.label || 'label';
-});
-
-onMounted(() => {
-  // 首次有值获取API接口
-  if ((props.value || props.modelValue) && treeData.value?.length === 0) {
-    getApiData();
-  }
-});
-
-watch(() => [props.modelValue, props.value], () => {
-  const value = props.modelValue ?? props.value;
-  selectValue.value = value !== '' ? value : undefined;
-
-  // 首次有值获取API接口
-  if ((selectValue.value) && treeData.value?.length === 0) {
-    getApiData();
-  }
-});
+const options = ref<TreeSelectProps['treeData']>([]);
 
 /** 获取接口数据 */
 const getApiData = async () => {
   if (!props.api) return;
   try {
-    const { api, params, params2, params3, apiResultKey } = props;
+    const { api, params, apiResultKey } = props;
+
     isLoading.value = true;
-    const { code, data } = await api(params, params2, params3);
+    const apiFun = Array.isArray(params) ? api(...params) : api(params);
+    const { code, data } = await apiFun;
     if (Number(code) !== 200) return;
-    let result = apiResultKey ? (data as { [apiResultKey: string]: unknown })?.[apiResultKey] : data;
-
-    // 如果存在拼接数据
-    if (props.spliceLabel?.length) {
-      result = handleSpliceTreeLabel(result as DefaultOptionType[], props.spliceLabel);
-    }
-
-    treeData.value = (result || []) as DefaultOptionType[];
+    const result = apiResultKey
+      ? (data as Record<string, unknown>)?.[apiResultKey]
+      : data;
+    options.value = result as TreeSelectProps['treeData'];
   } finally {
     isLoading.value = false;
   }
 };
 
-/**
- * 处理下拉显示
- * @param open - 开关
- */
-const handleDropdownVisibleChange = async (open: boolean) => {
-  if (props?.onDropdownVisibleChange) {
-    props.onDropdownVisibleChange?.(open);
-  } else if (open) {
+onMounted(() => {
+  // 当有值时自动获取接口
+  if (props.value !== undefined && props.value !== null && !options.value?.length) {
     getApiData();
   }
-};
+});
 
 /**
- * 处理值变化
- * @param value - 值
+ * 展开下拉回调
+ * @param open - 是否展开
  */
-const handleChange = (value: SelectValue) => {
-  emit('update:modelValue', value);
-  emit('update:value', value);
-  emit('update', value, treeData.value as unknown[]);
+const onOpenChange = (open: boolean) => {
+  if (open) getApiData();
 };
 </script>
+
+<template>
+  <TreeSelect
+    allow-clear
+    show-search
+    :max-tag-count="MAX_TAG_COUNT"
+    :tree-node-filter-prop="($attrs.fieldNames as { label?: string } | undefined)?.label || 'label'"
+    :placeholder="t('public.inputPleaseSelect')"
+    v-bind="$attrs"
+    :loading="isLoading"
+    :tree-data="options"
+    @open-change="onOpenChange"
+  >
+    <template #notFoundContent>
+      <div v-if="isLoading" class="py-3px text-center">
+        <Spin size="small" />
+      </div>
+    </template>
+  </TreeSelect>
+</template>

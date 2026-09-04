@@ -1,244 +1,306 @@
-<template>
-  <BasicContent :isPermission="checkPermission(pagePermission.page)">
-    <template #top>
-      <BasicSearch
-        :list="searchList"
-        :data="searchData"
-        :isLoading="isLoading"
-        @handleFinish="handleSearch"
-      />
-    </template>
-
-    <BtnRow>
-      <CreateBtn
-        v-if="checkPermission(pagePermission.create)"
-        @click="onCreate"
-      />
-    </BtnRow>
-
-    <BasicTable
-      :data="tableData"
-      :columns="tableColumns"
-      :isLoading="isLoading"
-    >
-      <template v-slot:operate='{ record }'>
-        <UpdateBtn
-          v-if="checkPermission(pagePermission.update)"
-          class="btn-space"
-          :isLoading="isCreateLoading"
-          @click="onUpdate(record)"
-        />
-        <DeleteBtn
-          v-if="checkPermission(pagePermission.delete)"
-          class="btn-space"
-          :isLoading="isLoading"
-          @click="handleDelete(record.id)"
-        />
-        <BasicBtn
-          v-if="checkPermission(pagePermission.create)"
-          :isLoading="isLoading"
-          @click="onCreate(record.id)"
-        >
-          添加下级菜单
-        </BasicBtn>
-      </template>
-    </BasicTable>
-  </BasicContent>
-
-  <BasicModal
-    v-model:isOpen="creates.isOpen"
-    :isLoading="isCreateLoading"
-    :title="creates.title"
-    @handleFinish="createSubmit"
-    @handleCancel="onCloseCreate"
-  >
-    <BasicForm
-      ref="createFormRef"
-      :list="createList(handleFilterParent(tableData), creates.data?.menuType as number)"
-      :labelCol="{ span: 6 }"
-      :data="creates.data"
-      @handleFinish="handleCreate"
-    />
-  </BasicModal>
-</template>
-
-<script lang="ts" setup>
-import type { FormData } from '#/form';
-import type { BasicFormProps } from '@/components/Form/model';
-import type { CreateData, TableData } from '#/public';
-import { message } from 'ant-design-vue';
-import { onActivated, reactive, shallowRef, ref } from 'vue';
-import { UpdateBtn, DeleteBtn, BasicBtn, CreateBtn } from '@/components/Buttons';
-import { ADD_TITLE, EDIT_TITLE } from '@/utils/config';
-import { checkPermission } from "@/utils/permissions";
+<script setup lang="ts">
+import type { BaseFormData } from '#/form';
+import type { Key } from 'ant-design-vue/es/table/interface';
+import { useI18n } from 'vue-i18n';
+import { computed, onActivated, onMounted, ref, useTemplateRef } from 'vue';
+import { Button, Popconfirm } from 'ant-design-vue';
 import {
-  searchList,
-  createList,
-  tableColumns,
-  pagePermission
-} from './model';
-import {
-  getSystemMenuTree,
-  getSystemMenuById,
-  createSystemMenu,
-  updateSystemMenu,
-  deleteSystemMenu
+  batchDeleteMenu,
+  createMenu,
+  deleteMenu,
+  getMenuById,
+  getMenuPage,
+  updateMenu,
 } from '@/servers/system/menu';
-import BtnRow from '@/components/BtnRow/index.vue';
-import BasicContent from '@/components/Content/BasicContent.vue';
-import BasicTable from '@/components/Table/BasicTable.vue';
-import BasicSearch from '@/components/Search/BasicSearch.vue';
-import BasicForm from '@/components/Form/BasicForm.vue';
-import BasicModal from '@/components/Modal/BasicModal.vue';
+import BaseCard from '@/components/Card/BaseCard.vue';
+import BaseContent from '@/components/Content/BaseContent.vue';
+import BaseSearch from '@/components/Search/BaseSearch.vue';
+import BaseTable from '@/components/Table/BaseTable.vue';
+import BasePagination from '@/components/Pagination/BasePagination.vue';
+import BaseModal from '@/components/Modal/BaseModal.vue';
+import BaseForm from '@/components/Form/BaseForm.vue';
+import UpdateBtn from '@/components/Buttons/UpdateBtn.vue';
+import DeleteBtn from '@/components/Buttons/DeleteBtn.vue';
+import { checkPermission } from '@/utils/permissions';
+import { ADD_TITLE, EDIT_TITLE, INIT_PAGINATION } from '@/utils/config';
+import { message } from '@/utils/message';
+import { useCommonStore } from '@/hooks/useCommonStore';
+import { searchList, tableColumns, createList } from './model';
 
-defineOptions({
-  name: 'SystemMenu'
-});
+defineOptions({ name: 'SystemMenu' });
 
-const isLoading = ref(false);
-const isCreateLoading = ref(false);
-const createFormRef = shallowRef<BasicFormProps>();
+// 当前行数据
+interface RowData {
+  id: string;
+  label: string;
+  type?: number;
+}
 
 // 初始化新增数据
 const initCreate = {
-  sortNum: 1,
-  parentId: '0'
+  type: 2,
+  state: 1,
 };
 
-// 搜索数据
-const searchData = ref<FormData>({});
+const { t } = useI18n();
+const createFormRef = useTemplateRef<{ submit: () => void }>('createFormRef');
 
-// 新增数据
-const creates = reactive<CreateData>({
-  id: '',
-  isOpen: false,
-  title: ADD_TITLE,
-  data: {...initCreate},
-  type: 'create'
-});
+const isLoading = ref(false);
+const isCreateLoading = ref(false);
+const isCreateOpen = ref(false);
+const createTitle = ref(ADD_TITLE(t));
+const createId = ref('');
+const createData = ref<BaseFormData>({ ...initCreate });
+const createType = ref<number | undefined>(undefined);
+const searchData = ref<BaseFormData>({});
+const page = ref(INIT_PAGINATION.page);
+const pageSize = ref(INIT_PAGINATION.pageSize);
+const total = ref(0);
+const tableData = ref<BaseFormData[]>([]);
+const selectedRowKeys = ref<Key[]>([]);
 
-// 表格数据
-const tableData = ref<TableData[]>([]);
+const { permissions } = useCommonStore();
 
-onActivated(() => {
-  getPage();
-});
+// 权限前缀
+const permissionPrefix = '/authority/menu';
+
+// 权限
+const pagePermission = computed(() => checkPermission(permissionPrefix, permissions.value));
 
 /** 获取表格数据 */
 const getPage = async () => {
-  const query = { ...searchData.value };
+  const params = { ...searchData.value, page: page.value, pageSize: pageSize.value };
+
   try {
     isLoading.value = true;
-    const { code, data } = await getSystemMenuTree(query);
+    const { code, data } = await getMenuPage(params);
     if (Number(code) !== 200) return;
-    tableData.value = JSON.parse(JSON.stringify(data));
+    const { items, total: resultTotal } = data;
+    total.value = resultTotal || 0;
+    tableData.value = items || [];
   } finally {
     isLoading.value = false;
   }
 };
 
-/** 表格提交 */
-const createSubmit = () => {
-  createFormRef.value?.handleSubmit();
-};
+// 首次进入自动加载接口数据
+onMounted(() => {
+  if (pagePermission.value.page) getPage();
+});
+
+// 每次进入调用（keep-alive 激活）
+onActivated(() => {
+  getPage();
+});
 
 /**
- * 父级菜单处理
- * @param list - 表格列表
- */
-const handleFilterParent = (list: TableData[]): TableData[] => {
-  const result: TableData[] = [
-    {
-      menuName: '顶级菜单',
-      id: '0',
-      children: list
-    }
-  ];
-
-  return result;
-};
-
-/**
- * 搜索提交
+ * 点击搜索
  * @param values - 表单返回数据
  */
-const handleSearch = (values: FormData) => {
+const onSearch = (values: BaseFormData) => {
+  page.value = 1;
   searchData.value = values;
   getPage();
 };
 
-/** 点击新增 */
-const onCreate = (id?: string) => {
-  creates.isOpen = !creates.isOpen;
-  creates.title = ADD_TITLE;
-  creates.id = id || '';
-  creates.type = 'create';
-  const params = {...initCreate};
-  params.parentId = id || params.parentId || '';
-  creates.data = params;
+/** 点击新增（传入 record 时为新增下级） */
+const onCreate = (record?: RowData) => {
+  const id = record?.id;
+  let type = record?.id ? record?.type : undefined;
+  if (type && type < 3) type = type + 1;
+  isCreateOpen.value = true;
+  createTitle.value = ADD_TITLE(t);
+  createId.value = '';
+  createData.value = { ...initCreate, parentId: id, type };
 };
 
 /**
  * 点击编辑
- * @param record - 当前行数据
+ * @param id - 唯一值
  */
-const onUpdate = async (record: FormData) => {
-  const { id, menuName } = record;
-  creates.isOpen = !creates.isOpen;
-  creates.id = id as string;
-  creates.title = EDIT_TITLE(menuName as string);
-  creates.type = 'update';
-
+const onUpdate = async (id: string) => {
   try {
+    isCreateOpen.value = true;
+    createTitle.value = EDIT_TITLE(t, id);
+    createId.value = id;
     isCreateLoading.value = true;
-    const { code, data } = await getSystemMenuById(id as string);
+    const { code, data } = await getMenuById(id);
     if (Number(code) !== 200) return;
-    creates.data = (data || {}) as FormData;
+    createData.value = data;
+    createType.value = data.type as number;
   } finally {
     isCreateLoading.value = false;
   }
+};
+
+/** 表格提交 */
+const createSubmit = () => {
+  createFormRef.value?.submit();
+};
+
+/** 关闭新增/修改弹窗 */
+const closeCreate = () => {
+  isCreateOpen.value = false;
 };
 
 /**
  * 新增/编辑提交
  * @param values - 表单返回数据
  */
-const handleCreate = async () => {
+const handleCreate = async (values: BaseFormData) => {
   try {
     isCreateLoading.value = true;
-    const functions = creates.type === 'update' ? updateSystemMenu(creates.id, creates.data) : createSystemMenu(creates.data);
-    const { code } = await functions;
+    const request = () => (createId.value ? updateMenu(createId.value, values) : createMenu(values));
+    const { code, message: messageInfo } = await request();
     if (Number(code) !== 200) return;
+    message.success(messageInfo || t('public.successfulOperation'));
+    isCreateOpen.value = false;
     getPage();
-    creates.id = '';
-    creates.isOpen = false;
-    creates.data = {...initCreate};
-    createFormRef.value?.handleReset();
-    message.success('操作成功');
   } finally {
     isCreateLoading.value = false;
   }
 };
 
-/** 关闭新增/编辑 */
-const onCloseCreate = () => {
-  creates.isOpen = false;
-};
-
 /**
- * 删除
- * @param id - 唯一标识
+ * 点击删除
+ * @param id - 唯一值
  */
-const handleDelete = async (id: string | number) => {
+const onDelete = async (id: string) => {
   try {
     isLoading.value = true;
-    const { code } = await deleteSystemMenu(id as string);
+    const { code, message: messageInfo } = await deleteMenu(id);
     if (Number(code) === 200) {
-      message.success('删除成功');
+      message.success(messageInfo || t('public.successfullyDeleted'));
       getPage();
     }
   } finally {
     isLoading.value = false;
   }
 };
+
+/** 处理批量删除 */
+const onBatchDelete = async () => {
+  try {
+    isLoading.value = true;
+    const { code, message: messageInfo } = await batchDeleteMenu(selectedRowKeys.value as string[]);
+    if (Number(code) === 200) {
+      message.success(messageInfo || t('public.successfullyDeleted'));
+      selectedRowKeys.value = [];
+      getPage();
+    }
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+/**
+ * 处理分页
+ * @param currentPage - 当前页数
+ * @param currentPageSize - 每页条数
+ */
+const onChangePagination = (currentPage: number, currentPageSize: number) => {
+  page.value = currentPage;
+  pageSize.value = currentPageSize;
+  getPage();
+};
+
+// 表格多选
+const rowSelection = computed(() => ({
+  selectedRowKeys: selectedRowKeys.value,
+  onChange: (keys: Key[]) => {
+    selectedRowKeys.value = keys;
+  },
+}));
+
+// 列配置
+const columns = computed(() => tableColumns(t));
 </script>
+
+<template>
+  <BaseContent :is-permission="pagePermission.page">
+    <BaseCard>
+      <BaseSearch
+        :list="searchList(t)"
+        :data="searchData"
+        :is-loading="isLoading"
+        @handle-finish="onSearch"
+      />
+    </BaseCard>
+
+    <BaseCard class="mt-10px">
+      <BaseTable
+        :is-loading="isLoading"
+        :is-create="pagePermission.create"
+        :columns="columns"
+        :data-source="tableData"
+        :row-selection="rowSelection"
+        row-key="id"
+        :default-expand-all-rows="true"
+        :is-operate="true"
+        @get-page="getPage"
+        @on-create="onCreate"
+      >
+        <template #leftContent>
+          <Popconfirm
+            v-if="selectedRowKeys.length > 0 && pagePermission.delete"
+            :title="t('public.kindTips')"
+            :description="t('public.batchDeleteConfirmMessage', { name: '' })"
+            :ok-text="t('public.confirm')"
+            :cancel-text="t('public.cancel')"
+            @confirm="onBatchDelete"
+          >
+            <Button danger class="small-btn">
+              {{ t('public.batchDelete') }} ({{ selectedRowKeys.length }})
+            </Button>
+          </Popconfirm>
+        </template>
+
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.dataIndex === 'operate'">
+            <div class="flex flex-wrap gap-5px">
+              <Button
+                v-if="pagePermission.create && ((record as RowData).type ?? 0) <= 2"
+                type="primary"
+                class="small-btn"
+                @click="onCreate(record as RowData)"
+              >
+                {{ t('systems.menu.addChildMenu') }}
+              </Button>
+              <UpdateBtn v-if="pagePermission.update" @click="onUpdate((record as RowData).id)" />
+              <DeleteBtn
+                v-if="pagePermission.delete"
+                :name="(record as RowData).label"
+                @handle-delete="onDelete((record as RowData).id)"
+              />
+            </div>
+          </template>
+        </template>
+      </BaseTable>
+
+      <BasePagination
+        :disabled="isLoading"
+        :current="page"
+        :page-size="pageSize"
+        :total="total"
+        @change="onChangePagination"
+      />
+    </BaseCard>
+
+    <BaseModal
+      :title="createTitle"
+      :open="isCreateOpen"
+      :is-loading="isCreateLoading"
+      width="600px"
+      @ok="createSubmit"
+      @cancel="closeCreate"
+    >
+      <BaseForm
+        ref="createFormRef"
+        :list="createList(t, createId, createData.type as number)"
+        :label-col="{ span: 4 }"
+        :data="createData"
+        @handle-finish="handleCreate"
+      />
+    </BaseModal>
+  </BaseContent>
+</template>
