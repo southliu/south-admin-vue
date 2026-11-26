@@ -3,11 +3,11 @@
 使用`Vue3`,`Vite`,`TypeScript`,`Ant Design Vue`等主流技术开发的开箱即用的中后台前端项目，支持`keepalive`功能，`Vite`自动生成路由，`pinia`状态管理，`vxe-table`虚拟滚动表格，`UnoCss`开发样式。
 
 ## 🚀 项目演示
-[演示地址](https://iamsouth.gitee.io)
+[演示地址](https://southliu.top)
 
 ## 💻 安装使用
 
-- 获取项目代码
+- 获取项目代码í
 
 ```bash
 git clone https://github.com/southliu/vue-admin.git
