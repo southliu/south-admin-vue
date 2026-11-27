@@ -1,7 +1,10 @@
 import type { Rule } from 'ant-design-vue/es/form';
 
 /** i18n 翻译函数（兼容 vue-i18n t 的常用签名） */
-export type Translate = (key: string, named?: Record<string, unknown>) => string;
+export type Translate = (
+  key: string,
+  named?: Record<string, unknown>,
+) => string;
 
 /**
  * @description: 配置项
@@ -36,7 +39,7 @@ export const EDIT_TITLE = (t: Translate, name: string, title?: string) =>
 
 // 密码规则
 export const PASSWORD_RULE = (t: Translate): Rule => ({
-  pattern: /^(?=.*\d)(?=.*[a-zA-Z])[\da-zA-Z~!@#$%^&*+\.\_\-*]{6,30}$/,
+  pattern: /^(?=.*\d)(?=.*[a-zA-Z])[\da-zA-Z~!@#$%^&*+._\-*]{6,30}$/,
   message: t('login.passwordRuleMessage'),
 });
 

@@ -9,25 +9,28 @@ import { useMenuStore } from '@/stores/menu';
 import { EMPTY_VALUE } from '@/utils/config';
 import { filterTableColumns } from './utils/helper';
 import TableFilter from './components/TableFilter.vue';
+import Ellipsis from '@/components/Ellipsis/index.vue';
 import './index.less';
 
 defineOptions({ name: 'BaseTable' });
 
 const props = withDefaults(
-  defineProps<{
-    columns?: TableColumn[];
-    dataSource?: Record<string, unknown>[];
-    rowKey?: string;
-    isLoading?: boolean;
-    isBordered?: boolean;
-    isZebra?: boolean;
-    isVirtual?: boolean;
-    isOperate?: boolean;
-    isAuthHeight?: boolean;
-    isCreate?: boolean;
-    scrollX?: number;
-    scrollY?: number;
-  } & Omit<TableProps, 'columns' | 'dataSource' | 'bordered'>>(),
+  defineProps<
+    {
+      columns?: TableColumn[];
+      dataSource?: Record<string, unknown>[];
+      rowKey?: string;
+      isLoading?: boolean;
+      isBordered?: boolean;
+      isZebra?: boolean;
+      isVirtual?: boolean;
+      isOperate?: boolean;
+      isAuthHeight?: boolean;
+      isCreate?: boolean;
+      scrollX?: number;
+      scrollY?: number;
+    } & Omit<TableProps, 'columns' | 'dataSource' | 'bordered'>
+  >(),
   {
     columns: () => [],
     dataSource: () => [],
@@ -59,7 +62,9 @@ const resizeColumns = ref<TableColumn[]>([]);
 const initColumns = () => {
   const newColumns = filterTableColumns(props.columns);
   resizeColumns.value = [...newColumns];
-  const columnKeys = newColumns.map((col) => String(col.dataIndex)).filter(Boolean);
+  const columnKeys = newColumns
+    .map((col) => String(col.dataIndex))
+    .filter(Boolean);
   tableFilters.value = columnKeys;
   sortList.value = columnKeys;
 };
@@ -158,14 +163,19 @@ const mergedColumns = computed<TableColumn[]>(() => {
   const result: TableColumn[] = [];
 
   for (const key of sortList.value) {
-    const col = resizeColumns.value.find((item) => String(item.dataIndex) === key);
+    const col = resizeColumns.value.find(
+      (item) => String(item.dataIndex) === key,
+    );
     if (!col) continue;
 
     result.push({
       ...col,
       ellipsis: col.ellipsis ?? true,
       // 手机端去除列固定，除非设置了isKeepFixed
-      fixed: col?.fixed && !(menuStore.isPhone && !col?.isKeepFixed) ? col.fixed : false,
+      fixed:
+        col?.fixed && !(menuStore.isPhone && !col?.isKeepFixed)
+          ? col.fixed
+          : false,
       customHeaderCell: (column) => {
         return {
           ...(col.customHeaderCell?.(column) || {}),
@@ -174,9 +184,15 @@ const mergedColumns = computed<TableColumn[]>(() => {
           onMousedown: handleResize(resizeColumns.value.indexOf(col)),
         } as Record<string, unknown>;
       },
-      customRender: col.customRender
-        ? col.customRender
-        : ({ text }) => handleEnumRender(col, text),
+      customRender: (context) => {
+        const rendered = col.customRender
+          ? col.customRender(context)
+          : handleEnumRender(col, context.text);
+        return col.ellipsis !== false &&
+          (typeof rendered === 'string' || typeof rendered === 'number')
+          ? h(Ellipsis, { text: String(rendered) })
+          : rendered;
+      },
     });
   }
 
@@ -197,7 +213,12 @@ const tableScroll = computed(() => {
     <!-- 顶部操作栏（左侧：新增+额外内容；右侧：额外内容+刷新+列筛选） -->
     <div v-if="isOperate" class="table-operate">
       <div class="flex flex-wrap items-center gap-6px">
-        <Button v-if="isCreate" type="primary" class="small-btn" @click="emit('onCreate')">
+        <Button
+          v-if="isCreate"
+          type="primary"
+          class="small-btn"
+          @click="emit('onCreate')"
+        >
           <template #icon><PlusOutlined /></template>
           {{ t('public.create') }}
         </Button>
@@ -224,7 +245,7 @@ const tableScroll = computed(() => {
 
     <Table
       v-bind="$attrs"
-      :columns="(mergedColumns as never)"
+      :columns="mergedColumns as never"
       :data-source="dataSource"
       :row-key="rowKey"
       :row-selection="rowSelection"

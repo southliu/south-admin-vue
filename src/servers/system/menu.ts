@@ -11,7 +11,9 @@ enum API {
  * @param data - 请求数据
  */
 export function getMenuPage(data: Partial<BaseFormData> & PaginationData) {
-  return request.get<PageServerResult<BaseFormData[]>>(`${API.URL}/page`, { params: data });
+  return request.get<PageServerResult<BaseFormData[]>>(`${API.URL}/page`, {
+    params: data,
+  });
 }
 
 /**
@@ -68,4 +70,9 @@ export function getMenuList() {
  */
 export function changeMenuState(data: object) {
   return request.put(`${API.URL}/changeState`, data);
+}
+
+/** 获取菜单权限列表，与 React 接口保持一致。 */
+export function getMenuPermissionList() {
+  return request.get(`${API.URL}/permissionList`);
 }

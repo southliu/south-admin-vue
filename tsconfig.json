@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "baseUrl": "./",
     "target": "ESNext",
     "useDefineForClassFields": true,
     "module": "ESNext",
@@ -11,18 +10,36 @@
     "isolatedModules": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ESNext",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "skipLibCheck": true,
     "noEmit": true,
     "noUnusedLocals": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
-      "@/*": ["src/*"],
-      "#/*": ["types/*"]
+      "@/*": [
+        "./src/*"
+      ],
+      "#/*": [
+        "./types/*"
+      ]
     },
-    "types": ["node", "vite/client"]
+    "types": [
+      "node",
+      "vite/client"
+    ]
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.vue", "types/**/*.ts"],
-  "exclude": ["dist", "node_modules"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.vue",
+    "types/**/*.ts"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules"
+  ]
 }

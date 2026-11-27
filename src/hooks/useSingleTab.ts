@@ -1,7 +1,11 @@
 import type { TabsData } from '@/stores/tabs';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
-import { getMenuByKey, getMenuName, getOpenMenuByRouter } from '@/menus/utils/helper';
+import {
+  getMenuByKey,
+  getMenuName,
+  getOpenMenuByRouter,
+} from '@/menus/utils/helper';
 import { ADD_TITLE, EDIT_TITLE } from '@/utils/config';
 import { setTitle } from '@/utils/helper';
 import { useCommonStore } from './useCommonStore';
@@ -21,25 +25,13 @@ export function useSingleTab(props: Props) {
   const { fatherPath, zhTitle, enTitle, name } = props;
   const { t, locale } = useI18n();
   const route = useRoute();
-  const { isPhone, isCollapsed, menuList, permissions, menuStore, tabsStore } = useCommonStore();
+  const { isPhone, isCollapsed, menuList, permissions, menuStore, tabsStore } =
+    useCommonStore();
 
   /** 获取路由对应名称 */
   const getNameByRoute = (): string => {
-    const search = route.fullPath.replace(route.path, '');
-    const params = search?.substring(1, search.length);
-    const list = params?.split('&');
-
-    for (let i = 0; i < list?.length; i++) {
-      const item = list[i];
-      const arr = item?.split('=');
-      const key = arr?.[0];
-      const value = arr?.[1];
-      if (key === name) {
-        return value;
-      }
-    }
-
-    return '';
+    const value = name ? route.query[name] : undefined;
+    return typeof value === 'string' ? value : '';
   };
 
   /** 获取标题 */
@@ -47,9 +39,8 @@ export function useSingleTab(props: Props) {
     const routeName = getNameByRoute();
     const lang = locale.value as string;
     const title = lang === 'zh' ? zhTitle : enTitle;
-    let result = '';
-    let newUpdateTitle = '';
-    let newCreateTitle = '';
+    let newUpdateTitle: string;
+    let newCreateTitle: string;
 
     if (!title) {
       const menuName = getMenuName(menuList.value, fatherPath, lang);
@@ -60,8 +51,7 @@ export function useSingleTab(props: Props) {
       newCreateTitle = `${title || ADD_TITLE(t)}${label}`;
       newUpdateTitle = `${title}${label}`;
     }
-    result = routeName ? newUpdateTitle : newCreateTitle;
-    return result;
+    return routeName ? newUpdateTitle : newCreateTitle;
   };
 
   /** 初始化操作 */
@@ -83,7 +73,12 @@ export function useSingleTab(props: Props) {
     const lang = locale.value as string;
     const title = lang === 'zh' ? zhTitle : enTitle;
     const currentTitle = handleGetTitle();
-    const newNav = getMenuByKey({ menus: menuList.value, permissions: permissions.value, key: fatherPath })?.nav || [];
+    const newNav =
+      getMenuByKey({
+        menus: menuList.value,
+        permissions: permissions.value,
+        key: fatherPath,
+      })?.nav || [];
     newNav.push({
       label: title,
       labelZh: zhTitle,

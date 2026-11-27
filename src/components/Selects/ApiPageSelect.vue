@@ -3,7 +3,7 @@ import type { ApiPageSelectProps } from './types';
 import type { DefaultOptionType } from 'ant-design-vue/es/select';
 import { Select, Spin } from 'ant-design-vue';
 import { useI18n } from 'vue-i18n';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch, onBeforeUnmount } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { MAX_TAG_COUNT } from './index';
 
@@ -20,7 +20,27 @@ const {
 } = props;
 
 const { t } = useI18n();
+const controlProps = computed<Record<string, unknown>>(() => {
+  const { api: _api, params: _params, apiResultKey: _key, ...rest } = props;
+  return Object.assign(
+    {
+      allowClear: true,
+      showSearch: true,
+      maxTagCount: MAX_TAG_COUNT,
+      placeholder: t('public.inputPleaseSelect'),
+      filterOption: false,
+    },
+    rest,
+  ) as Record<string, unknown>;
+});
 const isLoading = ref(false);
+let revision = 0;
+let isDisposed = false;
+const isOpen = ref(false);
+onBeforeUnmount(() => {
+  revision++;
+  isDisposed = true;
+});
 const currentPage = ref(page);
 const options = ref<DefaultOptionType[]>([]);
 const searchValue = ref('');
@@ -28,7 +48,8 @@ const hasMore = ref(true);
 
 /** 获取接口数据 */
 const getApiData = async () => {
-  if (!props.api || !hasMore.value) return;
+  if (isDisposed || !props.api || !hasMore.value || isLoading.value) return;
+  const current = ++revision;
   try {
     const { api, params, apiResultKey } = props;
 
@@ -50,7 +71,7 @@ const getApiData = async () => {
 
     isLoading.value = true;
     const { code, data } = await apiFun;
-    if (Number(code) !== 200) return;
+    if (current !== revision || Number(code) !== 200) return;
     const result = (
       apiResultKey ? (data as Record<string, unknown>)?.[apiResultKey] : data
     ) as DefaultOptionType[];
@@ -58,7 +79,8 @@ const getApiData = async () => {
     if (result?.length) {
       options.value = options.value.concat(result);
     }
-    hasMore.value = !!result?.length;
+    hasMore.value = Array.isArray(result) && result.length >= pageSize;
+    currentPage.value += 1;
 
     // 如果不存在更多数据，尾部显示没有更多数据
     if (!hasMore.value && options.value.length) {
@@ -71,40 +93,66 @@ const getApiData = async () => {
         } as DefaultOptionType,
       ]);
     }
+  } catch {
+    // 请求层统一提示异常，保留组件可重试状态。
   } finally {
-    isLoading.value = false;
+    if (current === revision) isLoading.value = false;
   }
 };
 
 onMounted(() => {
   // 当有值且列表为空时，自动获取接口
-  if (props.value !== undefined && props.value !== null && options.value.length === 0) {
+  if (
+    props.value !== undefined &&
+    props.value !== null &&
+    options.value.length === 0
+  ) {
     getApiData();
   }
 });
+
+watch(
+  () => [props.api, props.params, props.apiResultKey],
+  () => {
+    revision++;
+    isLoading.value = false;
+    options.value = [];
+    currentPage.value = page;
+    hasMore.value = true;
+    if (isOpen.value || props.value != null) void getApiData();
+  },
+  { deep: true },
+);
 
 /**
  * 展开下拉回调
  * @param open - 是否展开
  */
 const onOpenChange = (open: boolean) => {
+  isOpen.value = open;
   if (open && !options.value?.length) getApiData();
 };
 
 /** 滚动事件处理 */
 const handleScroll = (e: UIEvent) => {
-  const { scrollTop, scrollHeight, clientHeight } = e.currentTarget as HTMLElement;
+  const { scrollTop, scrollHeight, clientHeight } =
+    e.currentTarget as HTMLElement;
   const threshold = 10; // 距离底部阈值
 
   // 触底判断
-  if (scrollTop + clientHeight >= scrollHeight - threshold && !isLoading.value && hasMore.value) {
-    currentPage.value += 1;
+  if (
+    scrollTop + clientHeight >= scrollHeight - threshold &&
+    !isLoading.value &&
+    hasMore.value
+  ) {
     getApiData();
   }
 };
 
 /** 初始化 */
 const handleInit = () => {
+  revision++;
+  isLoading.value = false;
   options.value = [];
   currentPage.value = page;
   hasMore.value = true;
@@ -120,15 +168,10 @@ const handleSearch = useDebounceFn((value: string) => {
 
 <template>
   <Select
-    allow-clear
-    show-search
-    :filter-option="false"
-    :max-tag-count="MAX_TAG_COUNT"
-    :placeholder="t('public.inputPleaseSelect')"
-    v-bind="$attrs"
+    v-bind="{ ...controlProps, ...$attrs }"
     :loading="isLoading"
     :options="options"
-    @open-change="onOpenChange"
+    @dropdown-visible-change="onOpenChange"
     @popup-scroll="handleScroll"
     @search="handleSearch"
   >

@@ -34,6 +34,8 @@ const handleSearch = async (values: BaseFormData) => {
   try {
     isLoading.value = true;
     await getDataTrends(query);
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isLoading.value = false;
   }

@@ -2,7 +2,7 @@
 import type { BaseFormData } from '#/form';
 import type { Key } from 'ant-design-vue/es/table/interface';
 import { useI18n } from 'vue-i18n';
-import { computed, onActivated, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, onActivated, ref, useTemplateRef } from 'vue';
 import { Button, Popconfirm } from 'ant-design-vue';
 import {
   batchDeleteMenu,
@@ -65,11 +65,17 @@ const { permissions } = useCommonStore();
 const permissionPrefix = '/authority/menu';
 
 // 权限
-const pagePermission = computed(() => checkPermission(permissionPrefix, permissions.value));
+const pagePermission = computed(() =>
+  checkPermission(permissionPrefix, permissions.value),
+);
 
 /** 获取表格数据 */
 const getPage = async () => {
-  const params = { ...searchData.value, page: page.value, pageSize: pageSize.value };
+  const params = {
+    ...searchData.value,
+    page: page.value,
+    pageSize: pageSize.value,
+  };
 
   try {
     isLoading.value = true;
@@ -78,19 +84,16 @@ const getPage = async () => {
     const { items, total: resultTotal } = data;
     total.value = resultTotal || 0;
     tableData.value = items || [];
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isLoading.value = false;
   }
 };
 
-// 首次进入自动加载接口数据
-onMounted(() => {
-  if (pagePermission.value.page) getPage();
-});
-
 // 每次进入调用（keep-alive 激活）
 onActivated(() => {
-  getPage();
+  if (pagePermission.value.page) getPage();
 });
 
 /**
@@ -128,6 +131,8 @@ const onUpdate = async (id: string) => {
     if (Number(code) !== 200) return;
     createData.value = data;
     createType.value = data.type as number;
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isCreateLoading.value = false;
   }
@@ -150,12 +155,15 @@ const closeCreate = () => {
 const handleCreate = async (values: BaseFormData) => {
   try {
     isCreateLoading.value = true;
-    const request = () => (createId.value ? updateMenu(createId.value, values) : createMenu(values));
+    const request = () =>
+      createId.value ? updateMenu(createId.value, values) : createMenu(values);
     const { code, message: messageInfo } = await request();
     if (Number(code) !== 200) return;
     message.success(messageInfo || t('public.successfulOperation'));
     isCreateOpen.value = false;
     getPage();
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isCreateLoading.value = false;
   }
@@ -173,6 +181,8 @@ const onDelete = async (id: string) => {
       message.success(messageInfo || t('public.successfullyDeleted'));
       getPage();
     }
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isLoading.value = false;
   }
@@ -182,12 +192,16 @@ const onDelete = async (id: string) => {
 const onBatchDelete = async () => {
   try {
     isLoading.value = true;
-    const { code, message: messageInfo } = await batchDeleteMenu(selectedRowKeys.value as string[]);
+    const { code, message: messageInfo } = await batchDeleteMenu(
+      selectedRowKeys.value as string[],
+    );
     if (Number(code) === 200) {
       message.success(messageInfo || t('public.successfullyDeleted'));
       selectedRowKeys.value = [];
       getPage();
     }
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isLoading.value = false;
   }
@@ -259,14 +273,19 @@ const columns = computed(() => tableColumns(t));
           <template v-if="column.dataIndex === 'operate'">
             <div class="flex flex-wrap gap-5px">
               <Button
-                v-if="pagePermission.create && ((record as RowData).type ?? 0) <= 2"
+                v-if="
+                  pagePermission.create && ((record as RowData).type ?? 0) <= 2
+                "
                 type="primary"
                 class="small-btn"
                 @click="onCreate(record as RowData)"
               >
                 {{ t('systems.menu.addChildMenu') }}
               </Button>
-              <UpdateBtn v-if="pagePermission.update" @click="onUpdate((record as RowData).id)" />
+              <UpdateBtn
+                v-if="pagePermission.update"
+                @click="onUpdate((record as RowData).id)"
+              />
               <DeleteBtn
                 v-if="pagePermission.delete"
                 :name="(record as RowData).label"

@@ -1,8 +1,6 @@
 allowBuilds:
+  esbuild: true
   core-js: true
   es5-ext: true
-  esbuild: true
-onlyBuiltDependencies:
-  - esbuild
-  - core-js
-  - es5-ext
+minimumReleaseAgeExclude:
+  - vue-router@5.5.3

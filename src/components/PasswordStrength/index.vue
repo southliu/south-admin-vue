@@ -28,7 +28,7 @@ const handleStrength = useDebounceFn((value: string) => {
   if (/[a-z]/.test(value)) level++; // 有小写字母强度加1
   if (/[A-Z]/.test(value)) level++; // 有大写字母强度加1
   if (value.length > 10) level++; // 长度大于10强度加1
-  if (/[\.\~\@\#\$\^\&\*]/.test(value)) level++; // 有以下特殊字符强度加1
+  if (/[.~@#$^&*]/.test(value)) level++; // 有以下特殊字符强度加1
   strength.value = level;
 }, 500);
 

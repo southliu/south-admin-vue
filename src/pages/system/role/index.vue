@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { BaseFormData } from '#/form';
 import { useI18n } from 'vue-i18n';
-import { computed, onActivated, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, onActivated, ref, useTemplateRef } from 'vue';
 import { Button, Drawer, Spin } from 'ant-design-vue';
 import {
   createRole,
@@ -53,11 +53,17 @@ const { permissions } = useCommonStore();
 const permissionPrefix = '/authority/role';
 
 // 权限
-const pagePermission = computed(() => checkPermission(permissionPrefix, permissions.value));
+const pagePermission = computed(() =>
+  checkPermission(permissionPrefix, permissions.value),
+);
 
 /** 获取表格数据 */
 const getPage = async () => {
-  const params = { ...searchData.value, page: page.value, pageSize: pageSize.value };
+  const params = {
+    ...searchData.value,
+    page: page.value,
+    pageSize: pageSize.value,
+  };
 
   try {
     isLoading.value = true;
@@ -66,19 +72,16 @@ const getPage = async () => {
     const { items, total: resultTotal } = data;
     total.value = resultTotal || 0;
     tableData.value = items || [];
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isLoading.value = false;
   }
 };
 
-// 首次进入自动加载接口数据
-onMounted(() => {
-  if (pagePermission.value.page) getPage();
-});
-
 // 每次进入调用（keep-alive 激活）
 onActivated(() => {
-  getPage();
+  if (pagePermission.value.page) getPage();
 });
 
 /**
@@ -112,6 +115,8 @@ const onUpdate = async (id: string) => {
     const { code, data } = await getRoleById(id);
     if (Number(code) !== 200) return;
     createData.value = data;
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isCreateLoading.value = false;
   }
@@ -129,8 +134,15 @@ const onCopy = async (id: string) => {
     isCreateLoading.value = true;
     const { code, data } = await getRoleById(id);
     if (Number(code) !== 200) return;
-    const { id: _id, createdAt, updatedAt, ...rest } = data;
+    const {
+      id: _id,
+      createdAt: _createdAt,
+      updatedAt: _updatedAt,
+      ...rest
+    } = data;
     createData.value = rest;
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isCreateLoading.value = false;
   }
@@ -153,12 +165,15 @@ const closeCreate = () => {
 const handleCreate = async (values: BaseFormData) => {
   try {
     isCreateLoading.value = true;
-    const request = () => (createId.value ? updateRole(createId.value, values) : createRole(values));
+    const request = () =>
+      createId.value ? updateRole(createId.value, values) : createRole(values);
     const { code, message: messageInfo } = await request();
     if (Number(code) !== 200) return;
     message.success(messageInfo || t('public.successfulOperation'));
     isCreateOpen.value = false;
     getPage();
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isCreateLoading.value = false;
   }
@@ -176,6 +191,8 @@ const onDelete = async (id: string) => {
       message.success(messageInfo || t('public.successfullyDeleted'));
       getPage();
     }
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isLoading.value = false;
   }
@@ -219,7 +236,10 @@ const columns = computed(() => tableColumns(t));
         <template #bodyCell="{ column, record }">
           <template v-if="column.dataIndex === 'operate'">
             <div class="flex flex-wrap gap-5px">
-              <UpdateBtn v-if="pagePermission.update" @click="onUpdate((record as RowData).id)" />
+              <UpdateBtn
+                v-if="pagePermission.update"
+                @click="onUpdate((record as RowData).id)"
+              />
               <Button
                 v-if="pagePermission.create"
                 type="primary"
@@ -268,7 +288,9 @@ const columns = computed(() => tableColumns(t));
       <template #footer>
         <div class="flex justify-end gap-10px">
           <Button @click="closeCreate">{{ t('public.cancel') }}</Button>
-          <Button type="primary" @click="createSubmit">{{ t('public.confirm') }}</Button>
+          <Button type="primary" @click="createSubmit">{{
+            t('public.confirm')
+          }}</Button>
         </div>
       </template>
     </Drawer>

@@ -36,6 +36,8 @@ const onChange = async () => {
       });
       localValue.value = value;
     }
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isLoading.value = false;
   }

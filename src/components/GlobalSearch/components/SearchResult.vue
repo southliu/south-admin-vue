@@ -10,7 +10,7 @@ import { useTabsStore } from '@/stores/tabs';
 
 defineOptions({ name: 'SearchResult' });
 
-const props = defineProps<{
+defineProps<{
   list: SideMenu[];
   active: string;
 }>();
@@ -34,8 +34,16 @@ const onClick = (item: SideMenu) => {
   router.push(item.key);
 
   // 添加标签
-  const newTab = getMenuByKey({ menus: menuList.value, permissions: permissions.value, key: item.key });
-  if (newTab) tabsStore.addTabs({ ...newTab, nav: newTab.nav.map((nav) => ({ ...nav })) });
+  const newTab = getMenuByKey({
+    menus: menuList.value,
+    permissions: permissions.value,
+    key: item.key,
+  });
+  if (newTab)
+    tabsStore.addTabs({
+      ...newTab,
+      nav: newTab.nav.map((nav) => ({ ...nav })),
+    });
   tabsStore.setActiveKey(item.key);
 
   // 处理菜单展开
@@ -66,11 +74,19 @@ const onClick = (item: SideMenu) => {
       @mouseenter="emit('changActive', item.key)"
     >
       <span class="flex items-center">
-        <Icon v-if="item.icon" :icon="String(item.icon)" class="mr-8px text-lg" />
+        <Icon
+          v-if="item.icon"
+          :icon="String(item.icon)"
+          class="mr-8px text-lg"
+        />
         {{ item.label }}
       </span>
 
-      <Icon v-if="active === item.key" class="text-lg" icon="ant-design:enter-outlined" />
+      <Icon
+        v-if="active === item.key"
+        class="text-lg"
+        icon="ant-design:enter-outlined"
+      />
     </div>
   </div>
 

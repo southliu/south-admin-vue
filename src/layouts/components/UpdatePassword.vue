@@ -61,6 +61,8 @@ const onFinish = async (values: Record<string, unknown>) => {
       message.success(messageInfo);
       handleLogout();
     }
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isLoading.value = false;
   }
@@ -86,15 +88,47 @@ defineExpose({ open });
       @finish="onFinish"
       autocomplete="off"
     >
-      <Form.Item :label="t('login.oldPassword')" name="oldPassword" :rules="[{ required: true, message: t('public.pleaseEnter', { name: t('login.password') }) }, PASSWORD_RULE(t)]">
+      <Form.Item
+        :label="t('login.oldPassword')"
+        name="oldPassword"
+        :rules="[
+          {
+            required: true,
+            message: t('public.pleaseEnter', { name: t('login.password') }),
+          },
+          PASSWORD_RULE(t),
+        ]"
+      >
         <PasswordStrength v-model:value="formState.oldPassword" />
       </Form.Item>
 
-      <Form.Item :label="t('login.newPassword')" name="newPassword" :rules="[{ required: true, message: t('public.pleaseEnter', { name: t('login.password') }) }, PASSWORD_RULE(t)]">
+      <Form.Item
+        :label="t('login.newPassword')"
+        name="newPassword"
+        :rules="[
+          {
+            required: true,
+            message: t('public.pleaseEnter', { name: t('login.password') }),
+          },
+          PASSWORD_RULE(t),
+        ]"
+      >
         <PasswordStrength v-model:value="formState.newPassword" />
       </Form.Item>
 
-      <Form.Item :label="t('login.confirmPassword')" name="confirmPassword" :rules="[{ required: true, message: t('public.pleaseEnter', { name: t('login.confirmPassword') }) }, PASSWORD_RULE(t)]">
+      <Form.Item
+        :label="t('login.confirmPassword')"
+        name="confirmPassword"
+        :rules="[
+          {
+            required: true,
+            message: t('public.pleaseEnter', {
+              name: t('login.confirmPassword'),
+            }),
+          },
+          PASSWORD_RULE(t),
+        ]"
+      >
         <PasswordStrength v-model:value="formState.confirmPassword" />
       </Form.Item>
     </Form>

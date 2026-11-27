@@ -30,7 +30,8 @@ const publicStore = usePublicStore();
 const isLoading = ref(false);
 const verificationTime = ref(0);
 let timer: ReturnType<typeof setInterval> | null = null;
-const themeCache = (localStorage.getItem(THEME_KEY) || 'light') as 'dark' | 'light';
+const themeCache = (localStorage.getItem(THEME_KEY) || 'light') as
+  'dark' | 'light';
 
 const formState = reactive<ForgetData>({
   username: '',
@@ -85,6 +86,8 @@ const handleFinish = async (values: ForgetData) => {
       key: 'success',
     });
     router.push(`/login${route.fullPath.replace(route.path, '')}`);
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isLoading.value = false;
   }
@@ -162,8 +165,16 @@ const onVerificationCode = () => {
       `"
     >
       <div class="flex items-center justify-center pb-30px">
-        <img class="mr-2 object-contain" width="32" height="32" :src="Logo" alt="LOGO" />
-        <span class="text-22px font-bold tracking-2px">{{ t('login.resetPassword') }}</span>
+        <img
+          class="mr-2 object-contain"
+          width="32"
+          height="32"
+          :src="Logo"
+          alt="LOGO"
+        />
+        <span class="text-22px font-bold tracking-2px">{{
+          t('login.resetPassword')
+        }}</span>
       </div>
 
       <Form
@@ -177,33 +188,56 @@ const onVerificationCode = () => {
         <Form.Item
           name="username"
           :label="t('login.username')"
-          :rules="[{ required: true, message: t('public.pleaseEnter', { name: t('login.username') }) }]"
+          :rules="[
+            {
+              required: true,
+              message: t('public.pleaseEnter', { name: t('login.username') }),
+            },
+          ]"
         >
           <Input
             v-model:value="formState.username"
             allow-clear
-            :placeholder="t('public.pleaseEnter', { name: t('login.username') })"
+            :placeholder="
+              t('public.pleaseEnter', { name: t('login.username') })
+            "
           />
         </Form.Item>
 
         <Form.Item
           name="phone"
           :label="t('login.phoneNumber')"
-          :rules="[{ required: true, message: t('public.pleaseEnter', { name: t('login.phoneNumber') }) }]"
+          :rules="[
+            {
+              required: true,
+              message: t('public.pleaseEnter', {
+                name: t('login.phoneNumber'),
+              }),
+            },
+          ]"
         >
           <InputNumber
             v-model:value="formState.phone"
             class="w-full"
             :min="0"
             :controls="false"
-            :placeholder="t('public.pleaseEnter', { name: t('login.phoneNumber') })"
+            :placeholder="
+              t('public.pleaseEnter', { name: t('login.phoneNumber') })
+            "
           />
         </Form.Item>
 
         <Form.Item
           name="verification"
           :label="t('login.verificationCode')"
-          :rules="[{ required: true, message: t('public.pleaseEnter', { name: t('login.verificationCode') }) }]"
+          :rules="[
+            {
+              required: true,
+              message: t('public.pleaseEnter', {
+                name: t('login.verificationCode'),
+              }),
+            },
+          ]"
         >
           <div class="flex w-full">
             <InputNumber
@@ -211,10 +245,20 @@ const onVerificationCode = () => {
               class="w-full"
               :min="0"
               :controls="false"
-              :placeholder="t('public.pleaseEnter', { name: t('login.verificationCode') })"
+              :placeholder="
+                t('public.pleaseEnter', { name: t('login.verificationCode') })
+              "
             />
-            <Button class="ml-10px" :disabled="verificationTime > 0" @click="onVerificationCode">
-              {{ verificationTime > 0 ? `${verificationTime}s` : t('login.getVerificationCode') }}
+            <Button
+              class="ml-10px"
+              :disabled="verificationTime > 0"
+              @click="onVerificationCode"
+            >
+              {{
+                verificationTime > 0
+                  ? `${verificationTime}s`
+                  : t('login.getVerificationCode')
+              }}
             </Button>
           </div>
         </Form.Item>
@@ -223,14 +267,21 @@ const onVerificationCode = () => {
           name="newPassword"
           :label="t('login.newPassword')"
           :rules="[
-            { required: true, message: t('public.pleaseEnter', { name: t('login.newPassword') }) },
+            {
+              required: true,
+              message: t('public.pleaseEnter', {
+                name: t('login.newPassword'),
+              }),
+            },
             PASSWORD_RULE(t),
           ]"
         >
           <Input.Password
             v-model:value="formState.newPassword"
             allow-clear
-            :placeholder="t('public.pleaseEnter', { name: t('login.newPassword') })"
+            :placeholder="
+              t('public.pleaseEnter', { name: t('login.newPassword') })
+            "
           />
         </Form.Item>
 
@@ -238,18 +289,30 @@ const onVerificationCode = () => {
           name="confirmPassword"
           :label="t('login.confirmPassword')"
           :rules="[
-            { required: true, message: t('public.pleaseEnter', { name: t('login.confirmPassword') }) },
+            {
+              required: true,
+              message: t('public.pleaseEnter', {
+                name: t('login.confirmPassword'),
+              }),
+            },
             PASSWORD_RULE(t),
           ]"
         >
           <Input.Password
             v-model:value="formState.confirmPassword"
             allow-clear
-            :placeholder="t('public.pleaseEnter', { name: t('login.confirmPassword') })"
+            :placeholder="
+              t('public.pleaseEnter', { name: t('login.confirmPassword') })
+            "
           />
         </Form.Item>
 
-        <Button type="primary" html-type="submit" class="w-full" :loading="isLoading">
+        <Button
+          type="primary"
+          html-type="submit"
+          class="w-full"
+          :loading="isLoading"
+        >
           {{ t('public.submit') }}
         </Button>
       </Form>

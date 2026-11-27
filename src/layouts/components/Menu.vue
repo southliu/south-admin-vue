@@ -26,8 +26,17 @@ defineOptions({ name: 'LayoutMenu' });
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
-const { isMaximize, isCollapsed, isPhone, openKeys, selectedKeys, permissions, menuList, menuStore, tabsStore } =
-  useCommonStore();
+const {
+  isMaximize,
+  isCollapsed,
+  isPhone,
+  openKeys,
+  selectedKeys,
+  permissions,
+  menuList,
+  menuStore,
+  tabsStore,
+} = useCommonStore();
 
 /**
  * 转换菜单icon格式
@@ -139,12 +148,19 @@ const onClickMenu: MenuProps['onClick'] = (info) => {
 
   // 标签栏操作
   tabsStore.setActiveKey(key);
-  const newItems = getMenuByKey({ menus: menuList.value, permissions: permissions.value, key });
+  const newItems = getMenuByKey({
+    menus: menuList.value,
+    permissions: permissions.value,
+    key,
+  });
 
   if (newItems?.key) {
     tabsStore.setActiveKey(newItems.key);
     tabsStore.setNav(newItems.nav);
-    tabsStore.addTabs({ ...newItems, nav: newItems.nav.map((item) => ({ ...item })) });
+    tabsStore.addTabs({
+      ...newItems,
+      nav: newItems.nav.map((item) => ({ ...item })),
+    });
   } else {
     tabsStore.setActiveKey(key);
   }
@@ -192,8 +208,16 @@ const onClickLogo = () => {
       `"
       @click="onClickLogo"
     >
-      <img :src="Logo" width="30" height="30" class="object-contain" alt="logo" />
-      <span :class="`text-white ml-3 text-xl font-bold truncate ${isCollapsed ? 'hidden' : ''}`">
+      <img
+        :src="Logo"
+        width="30"
+        height="30"
+        class="object-contain"
+        alt="logo"
+      />
+      <span
+        :class="`text-white ml-3 text-xl font-bold truncate ${isCollapsed ? 'hidden' : ''}`"
+      >
         {{ t('public.currentName') }}
       </span>
     </div>
@@ -202,7 +226,7 @@ const onClickLogo = () => {
       id="layout-menu"
       class="z-1000"
       :selected-keys="[selectedKeys]"
-      :open-keys="openKeys"
+      :open-keys="isCollapsed && !isPhone ? undefined : openKeys"
       mode="inline"
       theme="dark"
       :force-sub-menu-render="true"

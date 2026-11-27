@@ -4,7 +4,11 @@ import { Spin } from 'ant-design-vue';
 import { useI18n } from 'vue-i18n';
 import { computed, onActivated, onMounted, ref, useTemplateRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { getArticleById, createArticle, updateArticle } from '@/servers/content/article';
+import {
+  getArticleById,
+  createArticle,
+  updateArticle,
+} from '@/servers/content/article';
 import BaseCard from '@/components/Card/BaseCard.vue';
 import BaseContent from '@/components/Content/BaseContent.vue';
 import BaseForm from '@/components/Form/BaseForm.vue';
@@ -30,7 +34,10 @@ const fatherPath = '/content/article';
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
-const createFormRef = useTemplateRef<{ submit: () => void; resetFields: () => void }>('createFormRef');
+const createFormRef = useTemplateRef<{
+  submit: () => void;
+  resetFields: () => void;
+}>('createFormRef');
 const publicStore = usePublicStore();
 const tabsStore = useTabsStore();
 
@@ -78,6 +85,8 @@ const handleUpdate = async (id: string) => {
     const { code, data } = await getArticleById(id);
     if (Number(code) !== 200) return;
     createData.value = data;
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isLoading.value = false;
   }
@@ -131,12 +140,17 @@ const goBack = (isRefresh?: boolean) => {
 const handleFinish = async (values: BaseFormData) => {
   try {
     isLoading.value = true;
-    const request = () => (createId.value ? updateArticle(createId.value, values) : createArticle(values));
+    const request = () =>
+      createId.value
+        ? updateArticle(createId.value, values)
+        : createArticle(values);
     const { code, message: messageInfo } = await request();
     if (Number(code) !== 200) return;
     message.success(messageInfo || t('public.successfulOperation'));
     createFormRef.value?.resetFields();
     goBack(true);
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isLoading.value = false;
   }
@@ -144,7 +158,9 @@ const handleFinish = async (values: BaseFormData) => {
 </script>
 
 <template>
-  <BaseContent :is-permission="id ? pagePermission.update : pagePermission.create">
+  <BaseContent
+    :is-permission="id ? pagePermission.update : pagePermission.create"
+  >
     <div class="!h-[calc(100vh-98px)]">
       <BaseCard>
         <div class="mt-20px mb-50px">
@@ -161,6 +177,10 @@ const handleFinish = async (values: BaseFormData) => {
       </BaseCard>
     </div>
 
-    <SubmitBottom :is-loading="isLoading" :back-path="fatherPath" @handle-confirm="handleSubmit" />
+    <SubmitBottom
+      :is-loading="isLoading"
+      :back-path="fatherPath"
+      @handle-confirm="handleSubmit"
+    />
   </BaseContent>
 </template>

@@ -1,10 +1,8 @@
 import type { CreateRequestOptions, RequestCancel } from './types';
-import { message } from '@/utils/message';
 import { getLocalInfo, removeLocalInfo } from '@/utils/local';
-import axios from 'axios';
+import { message } from '@/utils/message';
 import AxiosRequest from './request';
-
-export type { ServerResult } from './types';
+import axios from 'axios';
 
 /**
  * 权限过期提示在 localStorage 中的存储 key
@@ -12,72 +10,113 @@ export type { ServerResult } from './types';
  */
 const LOGIN_EXPIRED_MSG = 'login:expiredMsg';
 
+export function resolveErrorMessage(data: unknown, fallback: string): string {
+  if (data && typeof data === 'object') {
+    for (const key of ['message', 'detail']) {
+      const value = (data as Record<string, unknown>)[key];
+      if (typeof value === 'string' && value.trim()) return value.trim();
+    }
+  }
+  return fallback;
+}
+
 /**
  * 创建请求
  * @param url - 链接地址
  * @param tokenKey - 存token的key值
  * @param options - 扩展选项（onAuthExpired 权限过期回调，由应用层注入）
  */
-function creteRequest(url: string, tokenKey: string, options?: CreateRequestOptions) {
+function creteRequest(
+  url: string,
+  tokenKey: string,
+  options?: CreateRequestOptions,
+) {
+  const networkErrorMessage = () =>
+    options?.getNetworkErrorMessage?.() ||
+    (localStorage.getItem('lang')?.startsWith('en')
+      ? 'Network error, please try again later'
+      : '网络异常，请稍后重试');
+  const handleError = (data?: unknown) => {
+    const content = resolveErrorMessage(data, networkErrorMessage());
+    console.error('错误信息:', content);
+    message.error({ content, key: 'error' });
+  };
+  const expireSession = (
+    config: RequestCancel['config'],
+    serverMessage?: string,
+  ) => {
+    const token = getLocalInfo(tokenKey) || '';
+    const requestToken = String(config?.headers?.Authorization || '').replace(
+      'Bearer ',
+      '',
+    );
+    if (!requestToken) {
+      handleError({ message: serverMessage });
+      return;
+    }
+    // 已退出或已切换账号的旧请求不能清除当前会话。
+    if (!token || requestToken !== token) return;
+    const msg = serverMessage || networkErrorMessage();
+    removeLocalInfo(tokenKey);
+    handleError({ message: msg });
+    localStorage.setItem(LOGIN_EXPIRED_MSG, msg);
+    if (options?.onAuthExpired) {
+      options.onAuthExpired();
+    } else {
+      const current = `${window.location.pathname}${window.location.search}`;
+      const redirect =
+        current && current !== '/login'
+          ? `?redirect=${encodeURIComponent(current)}`
+          : '';
+      window.location.href = `/login${redirect}`;
+    }
+  };
   return new AxiosRequest({
     baseURL: url,
     timeout: 180 * 1000,
     interceptors: {
-      // 接口请求拦截
+      /**
+       * 接口请求拦截
+       * @param res - 待发送的请求配置，用于注入认证信息
+       */
       requestInterceptors(res) {
         const tokenLocal = getLocalInfo(tokenKey) || '';
         if (res?.headers && tokenLocal) {
-          res.headers.Authorization = `Bearer ${tokenLocal}`;
+          res.headers.Authorization = `Bearer ${tokenLocal}` as string;
         }
         return res;
       },
-      // 请求拦截超时
+      /**
+       * 请求拦截超时
+       * @param err - 请求阶段的异常，用于继续向调用方传递错误
+       */
       requestInterceptorsCatch(err) {
-        message.error('请求超时！');
-        return err;
+        handleError();
+        return Promise.reject(err);
       },
-      // 接口响应拦截
+      /**
+       * 接口响应拦截
+       * @param res - 接口响应，用于处理业务状态和认证过期
+       */
       responseInterceptors(res) {
         const { data } = res;
         // 权限过期
-        if (data?.code === 401) {
-          const currentToken = getLocalInfo(tokenKey) || '';
-          const requestToken = String(res.config.headers.get('Authorization') || '').replace(
-            'Bearer ',
-            '',
+        if (Number(data?.code) === 401) {
+          expireSession(
+            res.config,
+            resolveErrorMessage(data, networkErrorMessage()),
           );
-          // 请求发出后 token 已被替换（其它登录），跳过处理
-          if (currentToken && requestToken !== currentToken) {
-            return res;
-          }
-
-          const lang = localStorage.getItem('lang');
-          const enMsg = 'Insufficient permissions, please log in again!';
-          const zhMsg = '权限过期，请重新登录！';
-          const msg = lang === 'en' ? enMsg : zhMsg;
-          removeLocalInfo(tokenKey);
-          console.error('错误信息:', data?.message || msg);
-
-          localStorage.setItem(LOGIN_EXPIRED_MSG, msg);
-
-          if (options?.onAuthExpired) {
-            options.onAuthExpired();
-          } else {
-            const current = `${window.location.pathname}${window.location.search}`;
-            const redirect = current && current !== '/login' ? `?redirect=${current}` : '';
-            window.location.href = `/login${redirect}`;
-          }
           return res;
         }
 
-        // blob 响应（文件下载）跳过业务 code 校验，交由调用方处理
+        // blob 响应（文件下载）跳过业务 code 校验，交由调用方处理（如 ExportModal 解析错误 blob）
         if (data instanceof Blob || res.config?.responseType === 'blob') {
           return res;
         }
 
         // 错误处理（FastAPI HTTPException 返回 {detail} 无 message/code，故兜底 detail）
-        if (data?.code !== 200) {
-          handleError(data?.message || data?.detail);
+        if (Number(data?.code) !== 200) {
+          handleError(data);
           return res;
         }
 
@@ -86,27 +125,26 @@ function creteRequest(url: string, tokenKey: string, options?: CreateRequestOpti
       responseInterceptorsCatch(err) {
         // 取消重复请求则不报错
         if (axios.isCancel(err)) {
-          err.data = err.data || {};
-          return err;
+          return Promise.reject(err);
         }
 
-        handleError((err as RequestCancel)?.response?.data?.message || '服务器错误！');
-        return err;
+        const responseData = (err as RequestCancel)?.response?.data;
+        if (
+          err.response?.status === 401 ||
+          Number(responseData?.code) === 401
+        ) {
+          expireSession(
+            err.config,
+            resolveErrorMessage(responseData, networkErrorMessage()),
+          );
+          return Promise.reject(err);
+        }
+        handleError(responseData);
+        return Promise.reject(err);
       },
     },
   });
 }
 
-/**
- * 异常处理
- * @param error - 错误信息
- */
-const handleError = (error: string) => {
-  console.error('错误信息:', error);
-  message.error({
-    content: error || '服务器错误',
-    key: 'error',
-  });
-};
-
 export { creteRequest, LOGIN_EXPIRED_MSG };
+export type * from './types';

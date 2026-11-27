@@ -1,3 +1,4 @@
+import { USER_LENGTH, utf8ByteRule } from '@/utils/fieldLimits';
 import type { BaseFormList, BaseSearchList, ApiFn } from '#/form';
 import type { TableColumn } from '#/public';
 import type { Translate } from '@/utils/config';
@@ -29,6 +30,8 @@ export const searchList = (t: Translate): BaseSearchList[] => [
     componentProps: {
       api: getUserPage as ApiFn,
       apiResultKey: 'items',
+      queryKey: 'username',
+      pageSize: 10,
       fieldNames: { label: 'username', value: 'username' },
       params: {
         page: 1,
@@ -40,11 +43,13 @@ export const searchList = (t: Translate): BaseSearchList[] => [
     label: t('system.email'),
     name: 'email',
     component: 'Input',
+    componentProps: { maxLength: USER_LENGTH.email },
   },
   {
     label: t('system.phone'),
     name: 'phone',
     component: 'Input',
+    componentProps: { maxLength: USER_LENGTH.phone },
   },
   ...otherSearch,
 ];
@@ -117,19 +122,25 @@ export const createList = (t: Translate, isCreate: boolean): BaseFormList[] => [
     name: 'username',
     rules: FORM_REQUIRED,
     component: 'Input',
+    componentProps: { maxLength: USER_LENGTH.username },
   },
   {
     label: t('login.password'),
     name: 'password',
     hidden: !isCreate,
-    rules: isCreate ? FORM_REQUIRED : undefined,
+    rules: [
+      ...(isCreate ? FORM_REQUIRED : []),
+      utf8ByteRule(t, USER_LENGTH.password),
+    ],
     component: 'InputPassword',
+    componentProps: { maxLength: USER_LENGTH.password },
   },
   {
     label: t('public.name'),
     name: 'name',
     rules: FORM_REQUIRED,
     component: 'Input',
+    componentProps: { maxLength: USER_LENGTH.name },
   },
   {
     label: t('system.role'),
@@ -154,13 +165,17 @@ export const createList = (t: Translate, isCreate: boolean): BaseFormList[] => [
   {
     label: t('system.phone'),
     name: 'phone',
-    rules: [{ pattern: /^1[3456789]\d{9}$/, message: t('login.phoneNumberError') }],
+    rules: [
+      { pattern: /^1[3456789]\d{9}$/, message: t('login.phoneNumberError') },
+    ],
     component: 'Input',
+    componentProps: { maxLength: USER_LENGTH.phone },
   },
   {
     label: t('system.email'),
     name: 'email',
     rules: [{ type: 'email' }],
     component: 'Input',
+    componentProps: { maxLength: USER_LENGTH.email },
   },
 ];

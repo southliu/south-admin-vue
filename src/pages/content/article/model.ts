@@ -1,3 +1,4 @@
+import { ARTICLE_LENGTH, utf8ByteRule } from '@/utils/fieldLimits';
 import type { ApiFn, BaseFormList, BaseSearchList } from '#/form';
 import type { TableColumn } from '#/public';
 import type { Translate } from '@/utils/config';
@@ -12,6 +13,7 @@ export const searchList = (t: Translate): BaseSearchList[] => [
     label: t('public.title'),
     name: 'title',
     component: 'Input',
+    componentProps: { maxLength: ARTICLE_LENGTH.title },
   },
 ];
 
@@ -70,6 +72,7 @@ export const createList = (t: Translate): BaseFormList[] => [
     component: 'customize',
     render: (props) => h(CustomizeInput, props),
     componentProps: {
+      maxLength: ARTICLE_LENGTH.title,
       style: {
         width: '80%',
       },
@@ -107,6 +110,7 @@ export const createList = (t: Translate): BaseFormList[] => [
   {
     label: t('public.content'),
     name: 'content',
+    rules: [utf8ByteRule(t, ARTICLE_LENGTH.content)],
     component: 'Editor',
     componentProps: {
       style: {

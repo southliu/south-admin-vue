@@ -2,12 +2,14 @@
   font-size: 48px;
   margin-bottom: 20px;
 }
+
 .upgrade p {
   font-size: 24px;
   margin-bottom: 40px;
 }
+
 .upgrade a {
-  color: #0077cc;
+  color: #07c;
   text-decoration: none;
   font-weight: bold;
 }

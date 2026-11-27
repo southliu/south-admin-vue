@@ -40,3 +40,6 @@ stats.html
 components.d.ts
 gui-*
 .v2c
+/public/icons/
+*.tsbuildinfo
+/test-results/

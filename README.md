@@ -159,3 +159,40 @@ defineOptions({
 | onDropdownVisibleChange | 否 | 展开下拉菜单的回调 |
 ### 自定义组件
 #### 业务组件存放在`src/components/Business`目录下，每次新增组件想要在src/components/Business/index.tsx文件中引入。
+
+## 2026-11 React 版同步
+
+参考 `/Users/south/code/south-admin-react` 在 2026-10-27 至 2026-11-27 的提交：
+
+| React 提交 | Vue 对应调整 |
+| --- | --- |
+| `4a04512` | `createWebHistory`，对应 React BrowserRouter；登录跳转保留编码后的查询参数 |
+| `109f0fb`、`47ee509` | 构建版本同时注入 JS 和 version.json；全应用每 2 秒检查，1–3 秒随机倒计时，URL 版本参数防循环刷新 |
+| `959d4ea` | 移除日志 IP 搜索和展示 |
+| `5f94159` | ConfigProvider 与 Day.js 同步中英文 |
+| `6ba0afe` | 表格保留完整文字，省略时可查看完整内容；标签标题提示 |
+| `dffec15`、`a879078`、`18746a0` | 内容加载反馈、图标按需加载、现代 Vite 构建 |
+| `6262a02`、`61166a4` | 请求取消清理、旧响应隔离、下拉选项防竞态、菜单折叠和刷新修复 |
+| `3e17f60`、`9f8df03` | 移除隐式 API 自动导入与旧浏览器插件，包分析仅 REPORT=true 时启用 |
+| `3a879d1` | HTTP 与业务 401 均提示服务端错误，旧会话请求不清除新登录 |
+
+HR 页面与接口全部删除，保留 Git 历史。React 专用 Hooks、JSX、workspace 包拆分和其文档规则不直接移植。
+
+运行环境：Node.js >= 22.12，pnpm 12。执行 `pnpm install`、`pnpm typecheck`、`pnpm lint`、`pnpm test`、`pnpm build`。
+依赖逐项核对 npm 最新版本；Vue 工具链按官方兼容要求使用 TypeScript 6 API，精确解析版本记录在 pnpm-lock.yaml。Vite 8 使用 Rolldown/Oxc 和 Baseline 浏览器目标。
+
+### History 部署与版本更新
+
+访问地址使用 `/system/user`，服务器需要将非静态资源路径回退至 index.html，参考 [Nginx 配置](deploy/nginx.conf)。静态资源不存在时应返回 404，不能返回 HTML。GitHub Pages 默认不支持此回退，需要额外配置托管层。
+
+version.json 使用 Vite BASE_URL 根路径，禁止缓存；index.html 每次重新验证，带 hash 的 assets 可长期缓存。版本基于当前实际加载的 JS 构建标识比较，不使用 localStorage 首次响应作为基准。`__app_version` 是刷新防循环标识，搜索表单不会将它作为业务搜索条件。
+
+`pnpm icons` 自动生成离线常用图标子集与 public/icons 集合；dev 和 build 会自动执行。完整图标集仅在菜单需要时从本站获取。
+
+TypeScript 7 原生编译器通过 `typescript-native` 安装；`typescript` 按微软兼容方案别名到最新 `@typescript/typescript6`，为 vue-tsc、ESLint 和测试提供 Compiler API。不能将该兼容包直接替换成 TypeScript 7 的原生入口。
+
+### 维护中的依赖替代
+
+- 停维的 crypto-js 替换为 crypto-es 3.1.3，旧 AES 密文与 MD5 结果由回归测试验证兼容。
+- 暂停维护的 wangEditor 替换为 wangEditor-next 6.7.0，并使用 Vue 3 官方包装器；与 React 版同步保留工具栏、HTML 输出、图片和视频上传接口。v6 的视频 HTML 使用 figure 容器，服务端若配置 HTML 白名单，需要允许 figure/data-w-e-align。
+- 表单字段长度和密码 UTF-8 字节限制与 React 的 fieldLimits 保持一致。

@@ -1,4 +1,5 @@
 import { storeToRefs } from 'pinia';
+import { computed } from 'vue';
 import { useMenuStore } from '@/stores/menu';
 import { usePublicStore } from '@/stores/public';
 import { useTabsStore } from '@/stores/tabs';
@@ -14,7 +15,8 @@ export function useCommonStore() {
   const tabsStore = useTabsStore();
 
   const { permissions, userInfo } = storeToRefs(userStore);
-  const { isPhone, isCollapsed, openKeys, selectedKeys, menuList } = storeToRefs(menuStore);
+  const { isPhone, isCollapsed, openKeys, selectedKeys, menuList } =
+    storeToRefs(menuStore);
   const { theme, isFullscreen, isRefresh } = storeToRefs(publicStore);
   const { isMaximize, nav, tabs, activeKey } = storeToRefs(tabsStore);
 
@@ -22,10 +24,10 @@ export function useCommonStore() {
     // user
     permissions,
     userInfo,
-    userId: userInfo.value.id,
-    username: userInfo.value.username,
-    name: userInfo.value.name,
-    roles: userInfo.value.roles,
+    userId: computed(() => userInfo.value.id),
+    username: computed(() => userInfo.value.username),
+    name: computed(() => userInfo.value.name),
+    roles: computed(() => userInfo.value.roles),
     // menu
     isPhone,
     isCollapsed,

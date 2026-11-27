@@ -1,3 +1,4 @@
+import { MENU_LENGTH } from '@/utils/fieldLimits';
 import type { BaseFormList, BaseSearchList } from '#/form';
 import type { TableColumn } from '#/public';
 import type { Translate } from '@/utils/config';
@@ -15,11 +16,13 @@ export const searchList = (t: Translate): BaseSearchList[] => [
     label: t('systems.menu.label'),
     name: 'label',
     component: 'Input',
+    componentProps: { maxLength: MENU_LENGTH.label },
   },
   {
     label: t('systems.menu.labelEn'),
     name: 'labelEn',
     component: 'Input',
+    componentProps: { maxLength: MENU_LENGTH.labelEn },
   },
   {
     label: t('system.state'),
@@ -48,7 +51,9 @@ export const tableColumns = (t: Translate): TableColumn[] => {
       width: 50,
       customRender: ({ text }) =>
         h('div', { class: 'text-center' }, [
-          text ? h(Icon, { icon: String(text), class: 'text-16px' }) : EMPTY_VALUE,
+          text
+            ? h(Icon, { icon: String(text), class: 'text-16px' })
+            : EMPTY_VALUE,
         ]),
     },
     {
@@ -77,7 +82,11 @@ export const tableColumns = (t: Translate): TableColumn[] => {
       title: t('system.status'),
       dataIndex: 'state',
       width: 80,
-      customRender: ({ text, record }) => h(StateSwitch, { value: text as number, record: record as { id: string; label: string; labelEn: string } }),
+      customRender: ({ text, record }) =>
+        h(StateSwitch, {
+          value: text as number,
+          record: record as { id: string; label: string; labelEn: string },
+        }),
     },
     {
       title: t('systems.menu.sort'),
@@ -114,7 +123,11 @@ export const tableColumns = (t: Translate): TableColumn[] => {
  * @param id - 编辑id
  * @param type - 菜单类型
  */
-export const createList = (t: Translate, id: string, type?: number): BaseFormList[] => [
+export const createList = (
+  t: Translate,
+  id: string,
+  type?: number,
+): BaseFormList[] => [
   {
     label: t('systems.menu.parentMenu'),
     name: 'parentId',
@@ -129,12 +142,14 @@ export const createList = (t: Translate, id: string, type?: number): BaseFormLis
     name: 'label',
     rules: FORM_REQUIRED,
     component: 'Input',
+    componentProps: { maxLength: MENU_LENGTH.label },
   },
   {
     label: t('systems.menu.labelEn'),
     name: 'labelEn',
     rules: FORM_REQUIRED,
     component: 'Input',
+    componentProps: { maxLength: MENU_LENGTH.labelEn },
   },
   {
     label: t('public.type'),
@@ -150,6 +165,7 @@ export const createList = (t: Translate, id: string, type?: number): BaseFormLis
     name: 'router',
     rules: [{ required: type !== 3 }],
     component: 'Input',
+    componentProps: { maxLength: MENU_LENGTH.router },
   },
   {
     label: t('system.state'),
@@ -171,10 +187,12 @@ export const createList = (t: Translate, id: string, type?: number): BaseFormLis
     name: 'rule',
     rules: [{ required: type === 3 }],
     component: 'Input',
+    componentProps: { maxLength: MENU_LENGTH.rule },
   },
   {
     label: t('systems.menu.icon'),
     name: 'icon',
+    componentProps: { maxLength: MENU_LENGTH.icon },
     component: 'customize',
     render: (props) => h(IconInput, props),
   },

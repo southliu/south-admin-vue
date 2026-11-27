@@ -1,4 +1,8 @@
 export default {
+  byteLimit: 'Enter no more than {max} UTF-8 bytes',
+  networkError: 'Network error, please try again later',
+  expandMenu: 'Expand menu',
+  collapseMenu: 'Collapse menu',
   currentName: 'Background Management System',
   total: 'total',
   date: 'date',
@@ -64,7 +68,7 @@ export default {
   refreshPage: 'Refresh page',
   returnHome: 'Return home',
   pageErrorTitle: 'Page error',
-  reloadPageMsg: 'New content found, automatically updating...',
+  reloadPageMsg: 'New content available, updating in {seconds} seconds...',
   pagepageErrorSubTitle:
     'Sorry, an error has occurred on this page and the content cannot be displayed properly.',
   notPermissionMessage:

@@ -12,7 +12,10 @@ export type RangeValue<T> = [EventValue<T>, EventValue<T>] | null;
  * dayjs类型转字符串类型
  * @param value - dayjs时间类型值
  */
-export function dayjs2String(value: Dayjs | string, format = DATE_FORMAT): string {
+export function dayjs2String(
+  value: Dayjs | string,
+  format = DATE_FORMAT,
+): string {
   if (dayjs.isDayjs(value)) {
     return value.format(format);
   }
@@ -40,10 +43,17 @@ export function string2Dayjs(value: Dayjs | string | number): Dayjs {
  * dayjs数组类型转字符串类型
  * @param value - dayjs时间类型值
  */
-export function dayjsRang2StringRang(value: RangeValue<Dayjs>, format = DATE_FORMAT) {
+export function dayjsRang2StringRang(
+  value: RangeValue<Dayjs>,
+  format = DATE_FORMAT,
+) {
   if (!value) return undefined;
 
-  if (value?.length > 1 && dayjs.isDayjs(value?.[0]) && dayjs.isDayjs(value?.[1])) {
+  if (
+    value?.length > 1 &&
+    dayjs.isDayjs(value?.[0]) &&
+    dayjs.isDayjs(value?.[1])
+  ) {
     return [value[0]!.format(format), value[1]!.format(format)];
   }
   return value;
@@ -82,22 +92,7 @@ export function stringRang2DayjsRang(
 ): RangeValue<Dayjs> | undefined {
   if (!value) return undefined;
 
-  const [first, second] = value;
-
-  // 当第一个数据不为Dayjs
-  if (!dayjs.isDayjs(first)) {
-    const firstDayjs = typeof first === 'number' && isFinite(first) ? dayjs.unix(first) : dayjs(first);
-    return [firstDayjs, second as Dayjs];
-  }
-
-  // 当最后一个数据不为Dayjs
-  if (!dayjs.isDayjs(second)) {
-    const secondDayjs =
-      typeof second === 'number' && isFinite(second) ? dayjs.unix(second) : dayjs(second);
-    return [first, secondDayjs];
-  }
-
-  return [first, second];
+  return [string2Dayjs(value[0]), string2Dayjs(value[1])];
 }
 
 /**
@@ -131,11 +126,16 @@ function getListKeyParam(list: BaseFormList[], key: string): string {
  * @param obj - 检测对象
  * @param list - 列表值
  */
-export function filterDayjs(obj: BaseFormData, list: BaseFormList[]): Record<string, unknown> {
+export function filterDayjs(
+  obj: BaseFormData,
+  list: BaseFormList[],
+): Record<string, unknown> {
   // 获取自定义组件的key
   const customizeList = list
     .filter((item) => item.component === 'customize')
-    .map((item) => (Array.isArray(item.name) ? item.name.join('.') : item.name));
+    .map((item) =>
+      Array.isArray(item.name) ? item.name.join('.') : item.name,
+    );
 
   for (const key in obj) {
     // 自定义组件不处理

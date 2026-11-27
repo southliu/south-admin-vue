@@ -2,8 +2,18 @@ import type { Component, VNode } from 'vue';
 import type { BaseFormList, ComponentType } from '#/form';
 import type { Translate } from '@/utils/config';
 import { defineAsyncComponent, h } from 'vue';
-import { Input, InputNumber, Radio, Switch, Checkbox, Rate, Slider, AutoComplete } from 'ant-design-vue';
+import {
+  Input,
+  InputNumber,
+  Radio,
+  Switch,
+  Checkbox,
+  Rate,
+  Slider,
+  AutoComplete,
+} from 'ant-design-vue';
 import { initCompProps } from './helper';
+import ContentLoading from '@/layouts/components/ContentLoading.vue';
 import {
   BaseDatePicker,
   BaseRangePicker,
@@ -14,14 +24,70 @@ import {
 // 异步组件注册表（重依赖按需加载）
 const asyncComponents = new Map<ComponentType, Component>();
 
-asyncComponents.set('Select', defineAsyncComponent(() => import('@/components/Selects/BaseSelect.vue')));
-asyncComponents.set('TreeSelect', defineAsyncComponent(() => import('@/components/Selects/BaseTreeSelect.vue')));
-asyncComponents.set('ApiSelect', defineAsyncComponent(() => import('@/components/Selects/ApiSelect.vue')));
-asyncComponents.set('ApiTreeSelect', defineAsyncComponent(() => import('@/components/Selects/ApiTreeSelect.vue')));
-asyncComponents.set('ApiPageSelect', defineAsyncComponent(() => import('@/components/Selects/ApiPageSelect.vue')));
-asyncComponents.set('PasswordStrength', defineAsyncComponent(() => import('@/components/PasswordStrength/index.vue')));
-asyncComponents.set('Editor', defineAsyncComponent(() => import('@/components/WangEditor/index.vue')));
-asyncComponents.set('Upload', defineAsyncComponent(() => import('@/components/Upload/BaseUpload.vue')));
+asyncComponents.set(
+  'Select',
+  defineAsyncComponent({
+    loader: () => import('@/components/Selects/BaseSelect.vue'),
+    loadingComponent: ContentLoading,
+    delay: 150,
+  }),
+);
+asyncComponents.set(
+  'TreeSelect',
+  defineAsyncComponent({
+    loader: () => import('@/components/Selects/BaseTreeSelect.vue'),
+    loadingComponent: ContentLoading,
+    delay: 150,
+  }),
+);
+asyncComponents.set(
+  'ApiSelect',
+  defineAsyncComponent({
+    loader: () => import('@/components/Selects/ApiSelect.vue'),
+    loadingComponent: ContentLoading,
+    delay: 150,
+  }),
+);
+asyncComponents.set(
+  'ApiTreeSelect',
+  defineAsyncComponent({
+    loader: () => import('@/components/Selects/ApiTreeSelect.vue'),
+    loadingComponent: ContentLoading,
+    delay: 150,
+  }),
+);
+asyncComponents.set(
+  'ApiPageSelect',
+  defineAsyncComponent({
+    loader: () => import('@/components/Selects/ApiPageSelect.vue'),
+    loadingComponent: ContentLoading,
+    delay: 150,
+  }),
+);
+asyncComponents.set(
+  'PasswordStrength',
+  defineAsyncComponent({
+    loader: () => import('@/components/PasswordStrength/index.vue'),
+    loadingComponent: ContentLoading,
+    delay: 150,
+  }),
+);
+asyncComponents.set(
+  'Editor',
+  defineAsyncComponent({
+    loader: () => import('@/components/WangEditor/index.vue'),
+    loadingComponent: ContentLoading,
+    delay: 150,
+  }),
+);
+asyncComponents.set(
+  'Upload',
+  defineAsyncComponent({
+    loader: () => import('@/components/Upload/BaseUpload.vue'),
+    loadingComponent: ContentLoading,
+    delay: 150,
+  }),
+);
 
 // 业务组件注册表
 const businessComponents = new Map<string, Component>();
@@ -49,7 +115,10 @@ components.set('TimeRangePicker', BaseTimeRangePicker);
  * @param componentProps - 组件参数
  */
 const handleInputProps = (componentProps?: Record<string, unknown>) => {
-  const newComponentProps = { ...(componentProps || {}) } as Record<string, unknown>;
+  const newComponentProps = { ...(componentProps || {}) } as Record<
+    string,
+    unknown
+  >;
   delete newComponentProps?.children;
   delete newComponentProps?.api;
   delete newComponentProps?.apiResultKey;

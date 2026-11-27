@@ -2,7 +2,7 @@
 import type { BaseFormData } from '#/form';
 import type { Key } from 'ant-design-vue/es/table/interface';
 import { useI18n } from 'vue-i18n';
-import { computed, onActivated, onMounted, ref } from 'vue';
+import { computed, onActivated, ref } from 'vue';
 import { batchDeleteLog, deleteLog, getLogPage } from '@/servers/system/log';
 import BaseCard from '@/components/Card/BaseCard.vue';
 import BaseContent from '@/components/Content/BaseContent.vue';
@@ -42,12 +42,17 @@ const pagePermission = computed(() => ({
   page: checkPermission(permissionPrefix, permissions.value).page,
   create: false,
   update: false,
-  delete: checkPermission(`${permissionPrefix}/delete`, permissions.value).delete,
+  delete: checkPermission(`${permissionPrefix}/delete`, permissions.value)
+    .delete,
 }));
 
 /** 获取表格数据 */
 const getPage = async () => {
-  const params = { ...searchData.value, page: page.value, pageSize: pageSize.value };
+  const params = {
+    ...searchData.value,
+    page: page.value,
+    pageSize: pageSize.value,
+  };
 
   try {
     isLoading.value = true;
@@ -56,19 +61,16 @@ const getPage = async () => {
     const { items, total: resultTotal } = data;
     total.value = resultTotal || 0;
     tableData.value = items || [];
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isLoading.value = false;
   }
 };
 
-// 首次进入自动加载接口数据
-onMounted(() => {
-  if (pagePermission.value.page) getPage();
-});
-
 // 每次进入调用（keep-alive 激活）
 onActivated(() => {
-  getPage();
+  if (pagePermission.value.page) getPage();
 });
 
 /**
@@ -93,6 +95,8 @@ const onDelete = async (id: string) => {
       message.success(messageInfo || t('public.successfullyDeleted'));
       getPage();
     }
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isLoading.value = false;
   }
@@ -108,12 +112,16 @@ const handleBatchDelete = async () => {
       });
     }
     isLoading.value = true;
-    const { code, message: messageInfo } = await batchDeleteLog({ ids: selectedRowKeys.value });
+    const { code, message: messageInfo } = await batchDeleteLog({
+      ids: selectedRowKeys.value,
+    });
     if (Number(code) === 200) {
       message.success(messageInfo || t('public.successfullyDeleted'));
       selectedRowKeys.value = [];
       getPage();
     }
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isLoading.value = false;
   }

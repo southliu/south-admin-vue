@@ -4,7 +4,7 @@ import type { MenuProps } from 'ant-design-vue';
 import { Dropdown, TabPane, Tabs } from 'ant-design-vue';
 import Sortable from 'sortablejs';
 import { useI18n } from 'vue-i18n';
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { nextTick, onBeforeUnmount, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { getMenuByKey, getOpenMenuByRouter } from '@/menus/utils/helper';
 import { useDropdownMenu } from '../hooks/useDropdownMenu';
@@ -22,9 +22,9 @@ defineOptions({ name: 'LayoutTabs' });
 const { t, locale } = useI18n();
 const route = useRoute();
 const router = useRouter();
-const { permissions, isMaximize, menuList, menuStore, tabsStore, publicStore } = useCommonStore();
+const { permissions, isMaximize, menuList, menuStore, tabsStore, publicStore } =
+  useCommonStore();
 
-const refreshTime = ref(false);
 let timer: ReturnType<typeof setTimeout> | null = null;
 let sortable: Sortable | null = null;
 
@@ -51,7 +51,11 @@ const contextMenu = (tab: TabsData): { menu: MenuProps } => ({
 const handleAddTab = (path = route.path) => {
   if (!permissions.value.length || path === '/') return;
 
-  const newItems = getMenuByKey({ menus: menuList.value, permissions: permissions.value, key: path });
+  const newItems = getMenuByKey({
+    menus: menuList.value,
+    permissions: permissions.value,
+    key: path,
+  });
 
   if (newItems?.key) {
     const matched = route.matched[route.matched.length - 1];
@@ -65,7 +69,10 @@ const handleAddTab = (path = route.path) => {
     tabsStore.addTabs(newTab);
 
     // 路由变化同步浏览器标题
-    const title = locale.value === 'en' ? newItems.labelEn : newItems.labelZh || newItems.label;
+    const title =
+      locale.value === 'en'
+        ? newItems.labelEn
+        : newItems.labelZh || newItems.label;
     if (title) setTitle(t, title);
   } else {
     tabsStore.setActiveKey(path);
@@ -98,8 +105,9 @@ const handleNavigateTo = (key: string) => {
   // 立即更新选中状态
   tabsStore.setActiveKey(key);
 
-  const urlParams = tabsStore.tabs.find((tab) => tab.key === key)?.urlParams || '';
-  router.push(`${key}${urlParams}`);
+  const urlParams =
+    tabsStore.tabs.find((tab) => tab.key === key)?.urlParams || '';
+  router.push(key.includes('?') ? key : `${key}${urlParams}`);
 
   // 刷新标题
   const title = getTabTitle(tabsStore.tabs, key);
@@ -127,8 +135,11 @@ const onChange = (key: string | number) => {
 const remove = (targetKey: string) => {
   // 如果删除的是当前选中的，则跳转至上一个
   if (tabsStore.activeKey === targetKey) {
-    const currentIndex = tabsStore.tabs.findIndex((tab) => tab.key === tabsStore.activeKey);
-    const nextPath = tabsStore.tabs[currentIndex > 0 ? currentIndex - 1 : 0].key;
+    const currentIndex = tabsStore.tabs.findIndex(
+      (tab) => tab.key === tabsStore.activeKey,
+    );
+    const nextPath =
+      tabsStore.tabs[currentIndex > 0 ? currentIndex - 1 : 1]?.key;
     if (nextPath) {
       router.push(nextPath);
     }
@@ -142,8 +153,14 @@ const remove = (targetKey: string) => {
  * @param targetKey - 目标key值
  * @param action - 动作
  */
-const onEdit = (targetKey: string | number | MouseEvent | KeyboardEvent, action: 'add' | 'remove') => {
-  if (action === 'remove' && (typeof targetKey === 'string' || typeof targetKey === 'number')) {
+const onEdit = (
+  targetKey: string | number | MouseEvent | KeyboardEvent,
+  action: 'add' | 'remove',
+) => {
+  if (
+    action === 'remove' &&
+    (typeof targetKey === 'string' || typeof targetKey === 'number')
+  ) {
     remove(String(targetKey));
   }
 };
@@ -161,10 +178,11 @@ const onClickRefresh = async (key = tabsStore.activeKey) => {
 
   publicStore.setRefresh(true);
 
+  publicStore.refreshRoute(key.split('?')[0]);
+
   // 清除keep-alive缓存并强制重建视图
   if (cacheName) {
     tabsStore.removeCacheRoutes(cacheName);
-    publicStore.refreshRoute(key);
 
     await nextTick();
     tabsStore.addCacheRoutes(cacheName);
@@ -184,14 +202,21 @@ const onClickRefresh = async (key = tabsStore.activeKey) => {
  * 初始化标签拖拽排序
  */
 const initSortable = () => {
-  const navList = document.querySelector('.layout-tabs .ant-tabs-nav-list') as HTMLElement;
+  const navList = document.querySelector(
+    '.layout-tabs .ant-tabs-nav-list',
+  ) as HTMLElement;
   if (!navList || sortable) return;
 
   sortable = Sortable.create(navList, {
     animation: 150,
     filter: '.ant-tabs-tab-remove',
     onEnd({ oldIndex, newIndex }) {
-      if (oldIndex === newIndex || oldIndex === undefined || newIndex === undefined) return;
+      if (
+        oldIndex === newIndex ||
+        oldIndex === undefined ||
+        newIndex === undefined
+      )
+        return;
 
       const newTabs = [...tabsStore.tabs];
       const [moved] = newTabs.splice(oldIndex, 1);
@@ -220,6 +245,7 @@ onBeforeUnmount(() => {
   sortable?.destroy();
   sortable = null;
   if (timer) clearTimeout(timer);
+  publicStore.setRefresh(false);
 });
 </script>
 
@@ -242,10 +268,16 @@ onBeforeUnmount(() => {
       @change="onChange"
       @edit="onEdit as never"
     >
-      <TabPane v-for="tab in tabsStore.tabs" :key="tab.key" :closable="tab.closable">
+      <TabPane
+        v-for="tab in tabsStore.tabs"
+        :key="tab.key"
+        :closable="tab.closable"
+      >
         <template #tab>
           <Dropdown v-bind="contextMenu(tab)" trigger="contextmenu">
-            <span class="select-none">{{ tabLabel(tab) }}</span>
+            <span class="select-none" :title="tabLabel(tab)">{{
+              tabLabel(tab)
+            }}</span>
           </Dropdown>
         </template>
       </TabPane>
@@ -256,12 +288,18 @@ onBeforeUnmount(() => {
           <div
             class="left-divide-tab change divide-solid w-36px h-36px hover:opacity-70 flex place-content-center items-center"
           >
-            <TabRefresh :is-refresh="refreshTime" @on-click="() => onClickRefresh()" />
+            <TabRefresh
+              :is-refresh="publicStore.isRefresh"
+              @on-click="() => onClickRefresh()"
+            />
           </div>
           <div
             class="left-divide-tab change divide-solid w-36px h-36px hover:opacity-70 flex place-content-center items-center"
           >
-            <TabOptions :active-key="tabsStore.activeKey" :handle-refresh="onClickRefresh" />
+            <TabOptions
+              :active-key="tabsStore.activeKey"
+              :handle-refresh="onClickRefresh"
+            />
           </div>
           <div
             class="left-divide-tab change divide-solid w-36px h-36px hover:opacity-70 flex place-content-center items-center"

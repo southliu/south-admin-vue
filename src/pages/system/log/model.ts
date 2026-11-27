@@ -1,3 +1,4 @@
+import { LOG_LENGTH } from '@/utils/fieldLimits';
 import type { BaseSearchList } from '#/form';
 import type { TableColumn } from '#/public';
 import type { Translate } from '@/utils/config';
@@ -7,7 +8,6 @@ import { h } from 'vue';
 export interface LogItem {
   id: string;
   username: string;
-  ip: string;
   method: string;
   url: string;
   params: string;
@@ -27,12 +27,7 @@ export const searchList = (t: Translate): BaseSearchList[] => [
     name: 'username',
     wrapperWidth: 200,
     component: 'Input',
-  },
-  {
-    label: t('log.ip'),
-    name: 'ip',
-    wrapperWidth: 200,
-    component: 'Input',
+    componentProps: { maxLength: LOG_LENGTH.username },
   },
   {
     label: t('log.method'),
@@ -104,11 +99,6 @@ export const tableColumns = (t: Translate): TableColumn[] => {
       width: 120,
     },
     {
-      title: t('log.ip'),
-      dataIndex: 'ip',
-      width: 140,
-    },
-    {
       title: t('log.method'),
       dataIndex: 'method',
       width: 90,
@@ -135,15 +125,6 @@ export const tableColumns = (t: Translate): TableColumn[] => {
       dataIndex: 'params',
       width: 200,
       ellipsis: true,
-      customRender: ({ text }) => {
-        if (!text) return '-';
-        try {
-          const parsed = JSON.parse(String(text));
-          return `${JSON.stringify(parsed).slice(0, 50)}...`;
-        } catch {
-          return `${String(text).slice(0, 50)}...`;
-        }
-      },
     },
     {
       title: t('log.userAgent'),

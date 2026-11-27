@@ -1,7 +1,17 @@
 <script setup lang="ts">
-import { Skeleton } from 'ant-design-vue';
+import ContentLoading from './components/ContentLoading.vue';
+import { Button, Result } from 'ant-design-vue';
 import { useI18n } from 'vue-i18n';
-import { KeepAlive, computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { resolveErrorMessage } from '@/servers/request';
+import axios from 'axios';
+import {
+  computed,
+  defineAsyncComponent,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+} from 'vue';
 import { useRoute } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
 import nprogress from 'nprogress';
@@ -9,7 +19,6 @@ import { useToken } from '@/hooks/useToken';
 import { useCommonStore } from '@/hooks/useCommonStore';
 import { getMenuList } from '@/servers/system/menu';
 import { getUserRefreshPermissions } from '@/servers/system/user';
-import { versionCheck } from './utils/helper';
 import Menu from './components/Menu.vue';
 import Header from './components/Header.vue';
 import Tabs from './components/Tabs.vue';
@@ -20,66 +29,76 @@ defineOptions({ name: 'Layout' });
 
 const Forbidden = defineAsyncComponent(() => import('@/pages/403.vue'));
 
-const { t } = useI18n();
 const route = useRoute();
 const { getToken } = useToken();
-const { permissions, userId, isMaximize, isCollapsed, isPhone, menuList, userStore, menuStore, tabsStore, publicStore } =
-  useCommonStore();
+const {
+  permissions,
+  userId,
+  isMaximize,
+  isCollapsed,
+  isPhone,
+  menuList,
+  userStore,
+  menuStore,
+  tabsStore,
+  publicStore,
+} = useCommonStore();
 
+const { t } = useI18n();
 const isLoading = ref(true);
+const loadError = ref('');
 
-/**
- * 获取用户信息和权限
- */
-const getUserInfo = async () => {
-  try {
-    const { code, data } = await getUserRefreshPermissions({ refresh_cache: false });
-    if (Number(code) !== 200) return;
-    const { user, permissions: perms } = data;
-    userStore.setUserInfo(user);
-    userStore.setPermissions(perms);
-  } catch (err) {
-    console.error('获取用户数据失败:', err);
-    userStore.setPermissions([]);
-  }
-};
-
-/**
- * 获取菜单数据
- */
-const getMenuData = async () => {
-  const { code, data } = await getMenuList();
-  if (Number(code) !== 200) return;
-  menuStore.setMenuList(data || []);
-};
-
-onMounted(() => {
-  // 当用户信息缓存不存在时则重新获取
+/** 用户与菜单独立加载，失败可重试；旧会话响应不能覆盖新会话。 */
+const loadData = async () => {
   const token = getToken();
-  if (token && !userId) {
-    isLoading.value = true;
-    Promise.all([getUserInfo(), getMenuData()]).finally(() => {
-      isLoading.value = false;
-    });
-  } else {
-    isLoading.value = false;
+  if (!token) return;
+  isLoading.value = true;
+  loadError.value = '';
+  const tasks: Promise<unknown>[] = [];
+  if (!userId.value || !permissions.value.length) {
+    tasks.push(
+      getUserRefreshPermissions({ refresh_cache: false }).then((response) => {
+        if (Number(response.code) !== 200)
+          throw new Error(
+            resolveErrorMessage(response, t('public.networkError')),
+          );
+        if (getToken() !== token) return;
+        userStore.setUserInfo(response.data.user);
+        userStore.setPermissions(response.data.permissions);
+      }),
+    );
   }
+  if (!menuList.value.length) {
+    tasks.push(
+      getMenuList().then((response) => {
+        if (Number(response.code) !== 200)
+          throw new Error(
+            resolveErrorMessage(response, t('public.networkError')),
+          );
+        if (getToken() === token) menuStore.setMenuList(response.data || []);
+      }),
+    );
+  }
+  const results = await Promise.allSettled(tasks);
+  if (getToken() !== token) return;
+  const failure = results.find((result) => result.status === 'rejected');
+  if (failure?.status === 'rejected') {
+    const reason = failure.reason;
+    loadError.value = axios.isAxiosError(reason)
+      ? resolveErrorMessage(reason.response?.data, t('public.networkError'))
+      : reason instanceof Error
+        ? reason.message
+        : t('public.networkError');
+  }
+  isLoading.value = false;
+};
+onMounted(loadData);
 
-  // 监测是否需要刷新（版本检查）
-  requestAnimationFrame(() => {
-    versionCheck(t);
-  });
-});
-
-// 路由变化时关闭进度条 + 版本检查
+// 路由变化时关闭进度条
 watch(
   () => route.path,
   () => {
     nprogress?.done();
-
-    requestAnimationFrame(() => {
-      versionCheck(t);
-    });
   },
 );
 
@@ -112,7 +131,9 @@ const viewKey = computed(() => {
 });
 
 // 是否有数据（渲染菜单与标签）
-const hasData = computed(() => permissions.value.length > 0 && menuList.value.length > 0);
+const hasData = computed(
+  () => permissions.value.length > 0 && menuList.value.length > 0,
+);
 </script>
 
 <template>
@@ -148,21 +169,30 @@ const hasData = computed(() => permissions.value.length > 0 && menuList.value.le
         `"
       >
         <!-- 加载中骨架屏 -->
-        <Skeleton
-          v-if="isLoading && permissions.length === 0"
-          active
-          class="p-30px"
-          :paragraph="{ rows: 10 }"
-        />
+        <ContentLoading v-if="isLoading || publicStore.isRouteLoading" />
+        <Result v-else-if="loadError" status="error" :title="loadError">
+          <template #extra
+            ><Button type="primary" @click="loadData">{{
+              t('public.reload')
+            }}</Button></template
+          >
+        </Result>
 
         <!-- 无权限 -->
-        <Forbidden v-if="!isLoading && permissions.length === 0" />
+        <Forbidden
+          v-if="!isLoading && !loadError && permissions.length === 0"
+        />
 
         <!-- 页面内容（keep-alive + 错误边界；不套 Transition：隐藏/后台 WebView 中 rAF 暂停会卡死过渡导致页面不可见） -->
-        <RouterView v-slot="{ Component }">
+        <RouterView v-if="!isLoading && !loadError" v-slot="{ Component }">
           <ErrorBoundary>
             <KeepAlive :include="tabsStore.cacheRoutes" :max="10">
-              <component :is="Component" v-if="permissions.length > 0 && Component" :key="viewKey" />
+              <component
+                :is="Component"
+                v-if="permissions.length > 0 && Component"
+                v-show="!publicStore.isRouteLoading"
+                :key="viewKey"
+              />
             </KeepAlive>
           </ErrorBoundary>
         </RouterView>

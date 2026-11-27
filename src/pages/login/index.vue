@@ -32,14 +32,16 @@ const route = useRoute();
 const router = useRouter();
 const { setToken } = useToken();
 const publicStore = usePublicStore();
-const themeCache = (localStorage.getItem(THEME_KEY) || 'light') as 'dark' | 'light';
+const themeCache = (localStorage.getItem(THEME_KEY) || 'light') as
+  'dark' | 'light';
 
 const isLoading = ref(false);
 const isRemember = ref(true);
 
 const formState = reactive<LoginData>({
   username: import.meta.env.VITE_SHOW_DEFAULT_ACCOUNT === 'true' ? 'admin' : '',
-  password: import.meta.env.VITE_SHOW_DEFAULT_ACCOUNT === 'true' ? 'admin123456' : '',
+  password:
+    import.meta.env.VITE_SHOW_DEFAULT_ACCOUNT === 'true' ? 'admin123456' : '',
 });
 
 // 主题初始化
@@ -103,25 +105,29 @@ const handleGoMenu = async (perms: string[]) => {
 
   // 菜单仍为空（接口失败或返回空），无法确定跳转目标
   if (!menuData?.length) {
-    return message.error({ content: t('login.notPermissions'), key: 'permissions' });
+    return message.error({
+      content: t('login.notPermissions'),
+      key: 'permissions',
+    });
   }
 
-  const search = route.fullPath.replace(route.path, '');
-
-  // 如果存在重定向
-  if (search?.includes('?redirect=')) {
-    const start = search.indexOf('?redirect=') + '?redirect='.length;
-    const url = search.substring(start);
-    if (url) {
-      router.push(decodeURIComponent(url));
-      return;
-    }
+  const redirect = route.query.redirect;
+  if (
+    typeof redirect === 'string' &&
+    redirect.startsWith('/') &&
+    !redirect.startsWith('//')
+  ) {
+    await router.push(redirect);
+    return;
   }
 
   // 有权限则直接跳转第一个有效菜单
   const firstMenu = getFirstMenu(menuData, perms);
   if (!firstMenu) {
-    return message.error({ content: t('login.notPermissions'), key: 'permissions' });
+    return message.error({
+      content: t('login.notPermissions'),
+      key: 'permissions',
+    });
   }
   router.push(firstMenu);
 };
@@ -142,7 +148,10 @@ const handleFinish = async (values: LoginData) => {
     handleRemember(values.username, encryption(passwordObj));
 
     if (!perms?.length || !token) {
-      return message.error({ content: t('login.notPermissions'), key: 'permissions' });
+      return message.error({
+        content: t('login.notPermissions'),
+        key: 'permissions',
+      });
     }
 
     setToken(token);
@@ -155,6 +164,8 @@ const handleFinish = async (values: LoginData) => {
     menuStore.setMenuList(menuData);
 
     await handleGoMenu(perms);
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isLoading.value = false;
   }
@@ -223,8 +234,16 @@ const onForgetPassword = () => {
       `"
     >
       <div class="flex items-center justify-center pb-20px pt-10px">
-        <img class="mr-2 object-contain" width="32" height="32" :src="Logo" alt="LOGO" />
-        <span class="text-22px font-bold tracking-2px">{{ t('login.systemLogin') }}</span>
+        <img
+          class="mr-2 object-contain"
+          width="32"
+          height="32"
+          :src="Logo"
+          alt="LOGO"
+        />
+        <span class="text-22px font-bold tracking-2px">{{
+          t('login.systemLogin')
+        }}</span>
       </div>
 
       <Form
@@ -236,34 +255,50 @@ const onForgetPassword = () => {
         @finish="handleFinish"
         @finish-failed="handleFinishFailed"
       >
-        <div class="mb-8px text-14px text-#AAA6A6">{{ t('login.username') }}</div>
+        <div class="mb-8px text-14px text-#AAA6A6">
+          {{ t('login.username') }}
+        </div>
 
         <Form.Item
           name="username"
           class="!mb-15px"
-          :rules="[{ required: true, message: t('public.pleaseEnter', { name: t('login.username') }) }]"
+          :rules="[
+            {
+              required: true,
+              message: t('public.pleaseEnter', { name: t('login.username') }),
+            },
+          ]"
         >
           <Input
             v-model:value="formState.username"
             allow-clear
-            :placeholder="t('public.pleaseEnter', { name: t('login.username') })"
+            :placeholder="
+              t('public.pleaseEnter', { name: t('login.username') })
+            "
             autocomplete="username"
           />
         </Form.Item>
 
-        <div class="mb-8px text-14px text-#AAA6A6">{{ t('login.password') }}</div>
+        <div class="mb-8px text-14px text-#AAA6A6">
+          {{ t('login.password') }}
+        </div>
 
         <Form.Item
           name="password"
           class="!mb-15px"
           :rules="[
-            { required: true, message: t('public.pleaseEnter', { name: t('login.password') }) },
+            {
+              required: true,
+              message: t('public.pleaseEnter', { name: t('login.password') }),
+            },
             PASSWORD_RULE(t),
           ]"
         >
           <Input.Password
             v-model:value="formState.password"
-            :placeholder="t('public.pleaseEnter', { name: t('login.password') })"
+            :placeholder="
+              t('public.pleaseEnter', { name: t('login.password') })
+            "
             autocomplete="current-password"
           />
         </Form.Item>

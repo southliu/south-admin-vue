@@ -7,16 +7,16 @@ import { useTabsStore } from '@/stores/tabs';
  * 将搜索参数带入url中
  * @param formRef - 搜索表单组件实例（暴露 setFieldsValue）
  */
-export function useSearchUrlParams(
-  formRef: { value?: { setFieldsValue?: (values: Record<string, unknown>) => void } | null },
-) {
+export function useSearchUrlParams(formRef: {
+  value?: { setFieldsValue?: (values: Record<string, unknown>) => void } | null;
+}) {
   const route = useRoute();
   const router = useRouter();
   const tabsStore = useTabsStore();
 
   /** url参数带入搜索表单中 */
   const handleSetSearchForm = () => {
-    const urlParams = route.query as Record<string, string>;
+    const { __app_version: _version, ...urlParams } = route.query;
     formRef.value?.setFieldsValue?.(urlParams);
   };
 
@@ -40,7 +40,14 @@ export function useSearchUrlParams(
       urlParams = `?${urlParams}`;
     }
 
-    router.replace({ query: filteredValues });
+    router.replace({
+      query: {
+        ...filteredValues,
+        ...(route.query.__app_version
+          ? { __app_version: route.query.__app_version }
+          : {}),
+      },
+    });
     tabsStore.setTabs(route.path, urlParams);
   };
 

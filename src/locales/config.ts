@@ -18,9 +18,12 @@ const enModules = import.meta.glob('./en/**/*.ts', { eager: true }) as Record<
  * ./zh/public.ts -> public 命名空间
  * ./zh/systems/menu.ts -> systems.menu 命名空间
  */
-function modulesToMessages(modules: Record<string, { default: Record<string, unknown> }>, lang: string) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const messages: Record<string, any> = {};
+function modulesToMessages(
+  modules: Record<string, { default: Record<string, unknown> }>,
+  lang: string,
+) {
+  type Messages = { [key: string]: unknown };
+  const messages: Messages = {};
 
   for (const path in modules) {
     // 去除 ./zh/ 前缀和 .ts 后缀
@@ -32,7 +35,7 @@ function modulesToMessages(modules: Record<string, { default: Record<string, unk
     for (let i = 0; i < keys.length - 1; i++) {
       const key = keys[i];
       if (!current[key]) current[key] = {};
-      current = current[key] as Record<string, any>;
+      current = current[key] as Messages;
     }
 
     current[keys[keys.length - 1]] = modules[path].default;

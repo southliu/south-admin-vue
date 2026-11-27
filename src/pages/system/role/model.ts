@@ -1,3 +1,4 @@
+import { ROLE_LENGTH, utf8ByteRule } from '@/utils/fieldLimits';
 import type { BaseFormList, BaseSearchList } from '#/form';
 import type { TableColumn } from '#/public';
 import type { Translate } from '@/utils/config';
@@ -11,6 +12,7 @@ export const searchList = (t: Translate): BaseSearchList[] => [
     label: t('public.name'),
     name: 'name',
     component: 'Input',
+    componentProps: { maxLength: ROLE_LENGTH.name },
   },
 ];
 
@@ -64,11 +66,14 @@ export const createList = (t: Translate, id: string): BaseFormList[] => [
     name: 'name',
     rules: FORM_REQUIRED,
     component: 'Input',
+    componentProps: { maxLength: ROLE_LENGTH.name },
   },
   {
     label: t('system.description'),
     name: 'description',
+    rules: [utf8ByteRule(t, ROLE_LENGTH.description)],
     component: 'TextArea',
+    componentProps: { maxLength: ROLE_LENGTH.description },
   },
   {
     label: t('system.authorize'),

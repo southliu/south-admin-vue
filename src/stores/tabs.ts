@@ -21,7 +21,12 @@ const TABS_STORAGE = 'tabs_storage';
 function loadTabsState() {
   try {
     const json = localStorage.getItem(TABS_STORAGE);
-    if (json) return JSON.parse(json) as Partial<{ activeKey: string; nav: NavData[]; tabs: TabsData[] }>;
+    if (json)
+      return JSON.parse(json) as Partial<{
+        activeKey: string;
+        nav: NavData[];
+        tabs: TabsData[];
+      }>;
   } catch (error) {
     console.error('tabs_storage 解析失败:', error);
   }
@@ -51,7 +56,11 @@ export const useTabsStore = defineStore('tabs', () => {
   const persist = () => {
     localStorage.setItem(
       TABS_STORAGE,
-      JSON.stringify({ activeKey: activeKey.value, nav: nav.value, tabs: tabs.value }),
+      JSON.stringify({
+        activeKey: activeKey.value,
+        nav: nav.value,
+        tabs: tabs.value,
+      }),
     );
   };
 
@@ -140,7 +149,7 @@ export const useTabsStore = defineStore('tabs', () => {
     }
 
     if (payload === activeKey.value) {
-      let target = '';
+      let target: string;
       if (index < tabs.value.length) {
         target = tabs.value?.[index]?.key || '';
       } else {
@@ -182,7 +191,8 @@ export const useTabsStore = defineStore('tabs', () => {
 
     // 清除非当前的keepalive缓存
     for (const item of removed) {
-      if (item.key !== payload && item.cacheName) removeCacheRoutes(item.cacheName);
+      if (item.key !== payload && item.cacheName)
+        removeCacheRoutes(item.cacheName);
     }
 
     activeKey.value = tabs.value[0]?.key || '';
@@ -196,11 +206,15 @@ export const useTabsStore = defineStore('tabs', () => {
   /** 关闭右侧标签 */
   const closeRight = (payload: string) => {
     const index = tabs.value.findIndex((item) => item.key === payload);
-    const removed = index >= 0 ? tabs.value.splice(index + 1, tabs.value.length - index - 1) : [];
+    const removed =
+      index >= 0
+        ? tabs.value.splice(index + 1, tabs.value.length - index - 1)
+        : [];
 
     // 清除非当前的keepalive缓存
     for (const item of removed) {
-      if (item.key !== payload && item.cacheName) removeCacheRoutes(item.cacheName);
+      if (item.key !== payload && item.cacheName)
+        removeCacheRoutes(item.cacheName);
     }
 
     activeKey.value = tabs.value[tabs.value.length - 1]?.key || '';

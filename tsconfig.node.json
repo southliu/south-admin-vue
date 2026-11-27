@@ -1,11 +1,20 @@
 {
   "compilerOptions": {
-    "composite": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
-    "types": ["node"]
+    "types": [
+      "node"
+    ],
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "strict": true,
+    "target": "ESNext"
   },
-  "include": ["vite.config.ts", "uno.config.ts", "build/**/*.ts"]
+  "include": [
+    "vite.config.ts",
+    "uno.config.ts",
+    "build/**/*.ts"
+  ]
 }

@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import { Button, Result, Tooltip } from 'ant-design-vue';
-import { LogoutOutlined, MessageOutlined, RedoOutlined } from '@ant-design/icons-vue';
+import {
+  LogoutOutlined,
+  MessageOutlined,
+  RedoOutlined,
+} from '@ant-design/icons-vue';
 import { useI18n } from 'vue-i18n';
-import { onErrorCaptured, ref } from 'vue';
+import { onErrorCaptured, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { useUserStore } from '@/stores/user';
 import { createLog } from '@/servers/system/log';
 import { useLogout } from '@/hooks/useLogout';
@@ -12,6 +17,7 @@ defineOptions({ name: 'ErrorBoundary' });
 const { t } = useI18n();
 const { handleLogout } = useLogout();
 const userStore = useUserStore();
+const route = useRoute();
 
 const hasError = ref(false);
 const error = ref<Error | null>(null);
@@ -40,7 +46,6 @@ const sendErrorLog = async (err: Error, info: string) => {
 
     const logData = {
       username: userInfo?.username || 'anonymous',
-      ip: '',
       method: '',
       url: window.location.href,
       params: JSON.stringify({ info, content: err.stack || String(err) }),
@@ -67,6 +72,7 @@ const resetError = () => {
   hasError.value = false;
   error.value = null;
 };
+watch(() => route.path, resetError);
 </script>
 
 <template>

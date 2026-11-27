@@ -1,6 +1,4 @@
-import { encrypt, decrypt } from 'crypto-js/aes';
-import UTF8 from 'crypto-js/enc-utf8';
-import md5 from 'crypto-js/md5';
+import { AES, Utf8, MD5 } from 'crypto-es';
 
 /**
  * @description: 加密/解密封装，secret值建议从后台接口获取
@@ -18,9 +16,12 @@ interface EncryptionProps {
  * @param data - 加密数据
  * @param secret - 加密密钥
  */
-export function encryption(data: unknown | EncryptionProps, secret = secretKey) {
+export function encryption(
+  data: unknown | EncryptionProps,
+  secret = secretKey,
+) {
   const code = JSON.stringify(data);
-  return encrypt(code, secret).toString();
+  return AES.encrypt(code, secret).toString();
 }
 
 /**
@@ -29,8 +30,8 @@ export function encryption(data: unknown | EncryptionProps, secret = secretKey) 
  * @param secret - 解密密钥
  */
 export function decryption(data: string, secret = secretKey) {
-  const bytes = decrypt(data, secret);
-  const originalText = bytes.toString(UTF8);
+  const bytes = AES.decrypt(data, secret);
+  const originalText = bytes.toString(Utf8);
   if (originalText) {
     return JSON.parse(originalText);
   }
@@ -42,5 +43,5 @@ export function decryption(data: string, secret = secretKey) {
  * @param data - 加密数据
  */
 export function encryptMd5(data: string) {
-  return md5(data).toString();
+  return MD5(data).toString();
 }

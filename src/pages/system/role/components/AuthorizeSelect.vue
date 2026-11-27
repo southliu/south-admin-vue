@@ -28,6 +28,8 @@ const getList = async () => {
     const { code, data } = await getRolePermission(params);
     if (Number(code) !== 200) return;
     list.value = data?.treeData || [];
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isLoading.value = false;
   }

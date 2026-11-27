@@ -2,7 +2,7 @@
 import type { BaseFormData } from '#/form';
 import type { Key } from 'ant-design-vue/es/table/interface';
 import { useI18n } from 'vue-i18n';
-import { computed, onActivated, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, onActivated, ref, useTemplateRef } from 'vue';
 import {
   batchDeleteUser,
   createUser,
@@ -41,8 +41,13 @@ const initCreate = {
 };
 
 const { t } = useI18n();
-const createFormRef = useTemplateRef<{ submit: () => void; setFieldsValue: (v: Record<string, unknown>) => void }>('createFormRef');
-const searchFormRef = useTemplateRef<{ setFieldsValue: (v: Record<string, unknown>) => void }>('searchFormRef');
+const createFormRef = useTemplateRef<{
+  submit: () => void;
+  setFieldsValue: (v: Record<string, unknown>) => void;
+}>('createFormRef');
+const searchFormRef = useTemplateRef<{
+  setFieldsValue: (v: Record<string, unknown>) => void;
+}>('searchFormRef');
 
 const { handleSetSearchParams } = useSearchUrlParams(searchFormRef);
 
@@ -65,11 +70,17 @@ const { permissions } = useCommonStore();
 const permissionPrefix = '/authority/user';
 
 // 权限
-const pagePermission = computed(() => checkPermission(permissionPrefix, permissions.value));
+const pagePermission = computed(() =>
+  checkPermission(permissionPrefix, permissions.value),
+);
 
 /** 获取表格数据 */
 const getPage = async () => {
-  const params = { ...searchData.value, page: page.value, pageSize: pageSize.value };
+  const params = {
+    ...searchData.value,
+    page: page.value,
+    pageSize: pageSize.value,
+  };
 
   try {
     isLoading.value = true;
@@ -78,19 +89,16 @@ const getPage = async () => {
     const { items, total: resultTotal } = data;
     total.value = resultTotal || 0;
     tableData.value = items || [];
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isLoading.value = false;
   }
 };
 
-// 首次进入自动加载接口数据
-onMounted(() => {
-  if (pagePermission.value.page) getPage();
-});
-
 // 每次进入调用（keep-alive 激活）
 onActivated(() => {
-  getPage();
+  if (pagePermission.value.page) getPage();
 });
 
 /**
@@ -125,6 +133,8 @@ const onUpdate = async (id: string) => {
     const { code, data } = await getUserById(id);
     if (Number(code) !== 200) return;
     createData.value = data;
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isCreateLoading.value = false;
   }
@@ -147,12 +157,15 @@ const closeCreate = () => {
 const handleCreate = async (values: BaseFormData) => {
   try {
     isCreateLoading.value = true;
-    const request = () => (createId.value ? updateUser(createId.value, values) : createUser(values));
+    const request = () =>
+      createId.value ? updateUser(createId.value, values) : createUser(values);
     const { code, message: messageInfo } = await request();
     if (Number(code) !== 200) return;
     message.success(messageInfo || t('public.successfulOperation'));
     isCreateOpen.value = false;
     getPage();
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isCreateLoading.value = false;
   }
@@ -170,6 +183,8 @@ const onDelete = async (id: string) => {
       message.success(messageInfo || t('public.successfullyDeleted'));
       getPage();
     }
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isLoading.value = false;
   }
@@ -185,11 +200,15 @@ const handleBatchDelete = async () => {
       });
     }
     isLoading.value = true;
-    const { code, message: messageInfo } = await batchDeleteUser({ ids: selectedRowKeys.value });
+    const { code, message: messageInfo } = await batchDeleteUser({
+      ids: selectedRowKeys.value,
+    });
     if (Number(code) === 200) {
       message.success(messageInfo || t('public.successfullyDeleted'));
       getPage();
     }
+  } catch {
+    // 请求层已统一提示错误，结束当前操作并允许重试。
   } finally {
     isLoading.value = false;
   }
@@ -263,7 +282,10 @@ const columns = computed(() => tableColumns(t));
         <template #bodyCell="{ column, record }">
           <template v-if="column.dataIndex === 'operate'">
             <div class="flex flex-wrap gap-5px">
-              <UpdateBtn v-if="pagePermission.update" @click="onUpdate((record as RowData).id)" />
+              <UpdateBtn
+                v-if="pagePermission.update"
+                @click="onUpdate((record as RowData).id)"
+              />
               <DeleteBtn
                 v-if="pagePermission.delete"
                 :name="(record as RowData).username"

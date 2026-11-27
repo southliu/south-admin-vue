@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import type { IDomEditor, IEditorConfig } from '@wangeditor/editor';
-import '@wangeditor/editor/dist/css/style.css';
-import { Editor, Toolbar } from '@wangeditor/editor-for-vue';
+import type { IDomEditor, IEditorConfig } from '@wangeditor-next/editor';
+import '@wangeditor-next/editor/dist/css/style.css';
+import { Editor, Toolbar } from '@wangeditor-next/editor-for-vue';
 import { onBeforeUnmount, ref, shallowRef, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { FILE_API } from '@/utils/config';
 
 defineOptions({ name: 'WangEditor' });
 
@@ -16,7 +18,7 @@ const props = withDefaults(
   {
     modelValue: '',
     height: 300,
-    placeholder: '请输入内容...',
+    placeholder: '',
   },
 );
 
@@ -33,10 +35,15 @@ const valueHtml = ref(props.modelValue || props.value || '');
 // 工具栏配置
 const toolbarConfig = {};
 
+const { t } = useI18n();
+
 // 编辑器配置
 const editorConfig: Partial<IEditorConfig> = {
-  placeholder: props.placeholder,
-  MENU_CONF: {},
+  placeholder: props.placeholder || t('public.inputPleaseEnter'),
+  MENU_CONF: {
+    uploadImage: { server: FILE_API },
+    uploadVideo: { server: FILE_API },
+  },
 };
 
 // 同步外部值

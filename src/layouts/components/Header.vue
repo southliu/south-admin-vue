@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import type { MenuProps } from 'ant-design-vue';
-import { ExclamationCircleOutlined, FormOutlined, LogoutOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons-vue';
+import {
+  ExclamationCircleOutlined,
+  FormOutlined,
+  LogoutOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+} from '@ant-design/icons-vue';
 import { Dropdown } from 'ant-design-vue';
 import { useI18n } from 'vue-i18n';
-import { h, useTemplateRef } from 'vue';
+import { computed, h, useTemplateRef } from 'vue';
 import Avatar from '@/assets/images/avatar.png';
 import styles from '../index.module.less';
 import Fullscreen from '@/components/Fullscreen/index.vue';
@@ -23,13 +29,14 @@ type MenuKey = 'password' | 'logout';
 
 const { t } = useI18n();
 const { handleLogout } = useLogout();
-const { isCollapsed, isMaximize, username, name, nav, menuStore } = useCommonStore();
+const { isCollapsed, isMaximize, username, name, nav, menuStore } =
+  useCommonStore();
 
 // 修改密码弹窗
 const passwordRef = useTemplateRef<{ open: () => void }>('passwordRef');
 
 // 下拉菜单内容
-const items: MenuProps['items'] = [
+const items = computed<MenuProps['items']>(() => [
   {
     key: 'password',
     label: t('public.changePassword'),
@@ -40,7 +47,7 @@ const items: MenuProps['items'] = [
     label: t('public.signOut'),
     icon: () => h(LogoutOutlined, { class: 'mr-1' }),
   },
-];
+]);
 
 /**
  * 点击菜单
@@ -91,13 +98,18 @@ const onLogout = () => {
   >
     <div class="flex items-center">
       <!-- 折叠按钮 -->
-      <div
-        class="cursor-pointer text-lg"
+      <button
+        type="button"
+        :aria-label="
+          t(isCollapsed ? 'public.expandMenu' : 'public.collapseMenu')
+        "
+        :aria-expanded="!isCollapsed"
+        class="cursor-pointer text-lg border-0 bg-transparent text-inherit"
         @click="menuStore.toggleCollapsed(!isCollapsed)"
       >
         <MenuUnfoldOutlined v-if="isCollapsed" />
         <MenuFoldOutlined v-else />
-      </div>
+      </button>
 
       <!-- 面包屑 -->
       <Nav class="ml-15px" :list="nav" />
@@ -113,7 +125,10 @@ const onLogout = () => {
 
       <!-- 头像下拉 -->
       <Dropdown class="min-w-50px" :menu="{ items, onClick }">
-        <div class="ant-dropdown-link flex cursor-pointer items-center" @click.prevent>
+        <div
+          class="ant-dropdown-link flex cursor-pointer items-center"
+          @click.prevent
+        >
           <img
             :src="Avatar"
             width="27"

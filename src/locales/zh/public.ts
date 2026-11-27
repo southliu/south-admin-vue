@@ -1,4 +1,8 @@
 export default {
+  byteLimit: '最多输入 {max} 个 UTF-8 字节',
+  networkError: '网络异常，请稍后重试',
+  expandMenu: '展开菜单',
+  collapseMenu: '收起菜单',
   currentName: '后台管理系统',
   total: '总数',
   date: '日期',
@@ -64,7 +68,7 @@ export default {
   refreshPage: '刷新页面',
   returnHome: '返回首页',
   pageErrorTitle: '页面出现错误',
-  reloadPageMsg: '发现新内容，自动更新中...',
+  reloadPageMsg: '发现新内容，{seconds} 秒后自动更新...',
   pagepageErrorSubTitle: '抱歉，页面出现了错误，无法正常显示内容。',
   notPermissionMessage: '当前页面无法访问，可能没权限或已删除!',
   notFindMessage: '当前页面无法访问，可能没权限或已删除',
