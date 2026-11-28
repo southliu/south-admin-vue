@@ -1,4 +1,5 @@
 export default {
+  rememberAccount: 'Remember account',
   login: 'Login',
   systemLogin: 'System Login',
   oldPassword: 'Old Password',
@@ -10,7 +11,6 @@ export default {
   getVerificationCode: 'Verification',
   reacquire: 'Reacquire({time})',
   phoneNumberError: 'Please enter a valid 11-digit phone number',
-  rememberMe: 'Remember Me',
   resetPassword: 'Reset Password',
   verificationPassed: 'Verification Passed',
   forgetPassword: 'Forget Password?',

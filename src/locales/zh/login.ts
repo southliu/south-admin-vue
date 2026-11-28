@@ -1,11 +1,11 @@
 export default {
+  rememberAccount: '记住账号',
   login: '登录',
   systemLogin: '系统登录',
   oldPassword: '旧密码',
   newPassword: '新密码',
   password: '密码',
   username: '用户名',
-  rememberMe: '记住我',
   phoneNumber: '手机号码',
   verificationCode: '验证码',
   getVerificationCode: '获取验证码',

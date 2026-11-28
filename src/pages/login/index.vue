@@ -11,7 +11,6 @@ import { login } from '@/servers/login';
 import { LOGIN_EXPIRED_MSG } from '@/servers/request';
 import { setTitle } from '@/utils/helper';
 import { getMenuList } from '@/servers/system/menu';
-import { encryption, decryption } from '@/utils/crypto';
 import { getFirstMenu } from '@/menus/utils/helper';
 import { cancelAllRequest } from '@/servers';
 import { message } from '@/utils/message';
@@ -25,7 +24,6 @@ defineOptions({ name: 'Login' });
 
 const CHECK_REMEMBER = 'remember_me';
 const USER_USERNAME = 'login_username';
-const USER_PASSWORD = 'login_password';
 
 const { t, locale } = useI18n();
 const route = useRoute();
@@ -36,13 +34,28 @@ const themeCache = (localStorage.getItem(THEME_KEY) || 'light') as
   'dark' | 'light';
 
 const isLoading = ref(false);
-const isRemember = ref(true);
+const isRemember = ref(localStorage.getItem(CHECK_REMEMBER) !== 'false');
+
+const showDefaultAccount = import.meta.env.VITE_SHOW_DEFAULT_ACCOUNT === 'true';
+const defaultUsername = showDefaultAccount ? 'admin' : '';
+const defaultPassword = showDefaultAccount ? 'admin123456' : '';
 
 const formState = reactive<LoginData>({
-  username: import.meta.env.VITE_SHOW_DEFAULT_ACCOUNT === 'true' ? 'admin' : '',
-  password:
-    import.meta.env.VITE_SHOW_DEFAULT_ACCOUNT === 'true' ? 'admin123456' : '',
+  username: (isRemember.value ? localStorage.getItem(USER_USERNAME) : '') || defaultUsername,
+  password: defaultPassword,
 });
+
+// 迁移旧版“记住我”：只保留账号，不再保存或恢复密码。
+localStorage.removeItem('login_password');
+watch(
+  [isRemember, () => formState.username],
+  ([remember, username]) => {
+    localStorage.setItem(CHECK_REMEMBER, String(remember));
+    if (remember && username) localStorage.setItem(USER_USERNAME, username);
+    else localStorage.removeItem(USER_USERNAME);
+  },
+  { immediate: true, flush: 'sync' },
+);
 
 // 主题初始化
 if (themeCache === 'dark') {
@@ -54,19 +67,6 @@ publicStore.setThemeValue(themeCache === 'dark' ? 'dark' : 'light');
 const init = () => {
   // 清除上一会话的残留请求
   cancelAllRequest();
-
-  // 如果存在记住我缓存
-  const remember = localStorage.getItem(CHECK_REMEMBER);
-  isRemember.value = remember !== 'false';
-
-  // 如果存在账号密码缓存，则自动填充
-  const username = localStorage.getItem(USER_USERNAME);
-  const password = localStorage.getItem(USER_PASSWORD);
-  if (username && password) {
-    const newPassword = decryption(password) as { value: string } | null;
-    formState.username = username;
-    formState.password = newPassword?.value || '';
-  }
 
   // 读取权限过期提示（由请求拦截器在整页跳转前写入 localStorage）
   const expiredMsg = localStorage.getItem(LOGIN_EXPIRED_MSG);
@@ -143,10 +143,6 @@ const handleFinish = async (values: LoginData) => {
     if (Number(code) !== 200) return;
     const { token, user, permissions: perms } = data;
 
-    // 处理记住我逻辑
-    const passwordObj = { value: values.password, expire: 0 };
-    handleRemember(values.username, encryption(passwordObj));
-
     if (!perms?.length || !token) {
       return message.error({
         content: t('login.notPermissions'),
@@ -177,25 +173,6 @@ const handleFinish = async (values: LoginData) => {
  */
 const handleFinishFailed = (errors: unknown) => {
   console.error('错误信息:', errors);
-};
-
-/** 点击记住我 */
-const onRemember = () => {
-  isRemember.value = !isRemember.value;
-  localStorage.setItem(CHECK_REMEMBER, isRemember.value ? 'true' : 'false');
-};
-
-/**
- * 记住我逻辑
- */
-const handleRemember = (username: string, password: string) => {
-  if (isRemember.value) {
-    localStorage.setItem(USER_USERNAME, username);
-    localStorage.setItem(USER_PASSWORD, password);
-  } else {
-    localStorage.removeItem(USER_USERNAME);
-    localStorage.removeItem(USER_PASSWORD);
-  }
 };
 
 /** 点击忘记密码 */
@@ -314,8 +291,8 @@ const onForgetPassword = () => {
       </Form>
 
       <div class="mb-5px flex items-center justify-between px-1px">
-        <Checkbox :checked="isRemember" @change="onRemember">
-          {{ t('login.rememberMe') }}
+        <Checkbox v-model:checked="isRemember">
+          {{ t('login.rememberAccount') }}
         </Checkbox>
 
         <div class="cursor-pointer text-blue-500" @click="onForgetPassword">
